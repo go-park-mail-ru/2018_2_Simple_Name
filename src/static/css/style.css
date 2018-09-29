@@ -1,0 +1,47 @@
+.button_menu{
+    margin-top: 8px;
+}
+
+A{
+    text-decoration: none;
+}
+
+h1{
+    font-size: 30px;
+}
+
+.menu {
+    font-size: 30px;
+    width: 210px;
+    height: 200px;
+    margin: auto;
+    margin-top: 5vw;
+
+
+}
+
+.p_name{
+    margin: 0 auto;
+    width: 300px;
+    margin-top: 10vw;
+}
+
+/*Стили кирилла*/
+
+#headerTitle{
+    text-align: center
+}
+
+
+#header{
+    padding-top: 10%
+}
+
+#body{
+    padding: 1% 27%;
+    align-items: center;
+}
+
+#formblock{
+    align-items: center;
+}
