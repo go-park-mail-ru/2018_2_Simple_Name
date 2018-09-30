@@ -23,8 +23,8 @@ function createMenu() {
     logo.appendChild(logo_header);
 
     const titles = {
-        sing_in: 'Sing in',
-        sing_up: 'Sing up',
+        signin: 'Sign in',
+        signup: 'Sign up',
         leaders: 'Leaders',
         profile: 'Profile',
         about: 'About'
@@ -61,7 +61,7 @@ function createMenu() {
 
 }
 
-function createSingIn() {
+function createSignIn() {
     root.innerHTML = '';
 
     const header = document.createElement('div');
@@ -118,10 +118,20 @@ function createSingIn() {
 
         const email = form.elements['email'].value;
         const password = form.elements['password'].value;
-
+        if (email == "" || password == "") {
+            alert("Enter email!")
+            return
+        }
         httpReq.doPost({
-            url: '/login',
+            url: '/signin',
             callback(res) {
+                if (res.status == 404) {
+                    alert("Wrong login or password");
+                    return;
+                }
+                if(res.status == 400){
+                    alert("Already loged in")
+                }
                 createProfile();
             },
             data: {
@@ -132,7 +142,7 @@ function createSingIn() {
     });
 }
 
-function createSingUp() {
+function createSignUp() {
     root.innerHTML = '';
 
     const header = document.createElement('div');
@@ -208,12 +218,20 @@ function createSingUp() {
 
         httpReq.doPost({
             callback(res) {
+                if (res.status == 208){
+                    alert("Email already exist");
+                    return;
+                }
+                if (res.status > 300) {
+                    alert("Something was wrong");
+                    return;
+                }
                 createProfile();
             },
             url: '/signup',
             data: {
-                email,
-                password,
+                "email":email,
+                "password":password,
             }
         });
     });
@@ -380,8 +398,8 @@ function createAbout() {
 }
 
 const buttons = {
-    sing_in: createSingIn,
-    sing_up: createSingUp,
+    signin: createSignIn,
+    signup: createSignUp,
     leaders: createLeaders,
     profile: createProfile,
     about: createAbout,

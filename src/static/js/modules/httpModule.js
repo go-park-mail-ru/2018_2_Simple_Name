@@ -9,10 +9,13 @@ class httpReq{
             headers: {
                 "Content-Type": "application/json; charset=utf-8",
             },
-            data: JSON.stringify(data),
+            body: JSON.stringify(data),         
         })
         .then(function(res){
             callback(res);
+        })
+        .catch(function(err){
+            console.log(err);
         });
     }
     doGet(params = {}){
