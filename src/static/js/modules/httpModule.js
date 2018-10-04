@@ -6,10 +6,10 @@ class httpReq{
             method: method,
             mode: 'cors',
             credentials: 'include',
-            headers: {
-                "Content-Type": "application/json; charset=utf-8",
-            },
-            body: JSON.stringify(data),         
+            //headers: {
+            //    "Content-Type": "multipart/form-data; boundary=something",//"application/json; charset=utf-8",
+          //  },
+            body: data,
         })
         .then(function(res){
             callback(res);
@@ -21,7 +21,7 @@ class httpReq{
     doGet(params = {}){
         this._dofetch({...params,method: 'GET'});
     }
-    
+
     doPost(params = {}){
         this._dofetch({...params,method : 'POST'});
     }

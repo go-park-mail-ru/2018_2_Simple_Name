@@ -5,7 +5,6 @@ import { Form } from "./components/form.js";
 const httpReq = window.httpModule;
 
 const root = document.getElementById("root");
-
 function createLinkMenu() {
     const link = document.createElement('a');
     link.textContent = "Back to main menu";
@@ -69,6 +68,18 @@ function createSignIn() {
     header.id = "header";
     root.appendChild(header);
 
+    httpReq.doGet({
+        callback(res) {
+            if (res.status > 300) {
+                alert("You already logged in");
+                root.innerHTML = '';
+                createMenu();
+                return;
+            }
+        },
+        url: '/signin'
+    });
+
     const logo = document.createElement('span');
     logo.id = 'logo';
     const headerTitle = document.createElement('h1');
@@ -77,7 +88,6 @@ function createSignIn() {
 
     header.appendChild(logo);
     header.appendChild(headerTitle);
-
 
     const body = document.createElement('div');
     body.id = 'body';
@@ -122,6 +132,11 @@ function createSignIn() {
             alert("Enter email!")
             return
         }
+
+        let formData = new FormData()
+        formData.append("password", password)
+        formData.append("email", email)
+
         httpReq.doPost({
             url: '/signin',
             callback(res) {
@@ -130,16 +145,18 @@ function createSignIn() {
                     return;
                 }
                 if(res.status == 400){
-                    alert("Already loged in")
+                    alert("Wrong email or password")
                 }
-                createProfile();
+                if(res.status == 200){
+                    alert("You are log in!")
+                    createProfile();
+                }
+                //createProfile();
             },
-            data: {
-                email,
-                password
-            }
+            data: formData
         })
     });
+
 }
 
 function createSignUp() {
@@ -159,6 +176,17 @@ function createSignUp() {
     header.appendChild(logo);
     header.appendChild(headerTitle);
 
+    httpReq.doGet({
+        callback(res) {
+            if (res.status > 300) {
+                alert("You already register");
+                root.innerHTML = '';
+                createMenu();
+                return;
+            }
+        },
+        url: '/signup'
+    });
 
     const body = document.createElement('div');
     body.id = 'body';
@@ -168,6 +196,18 @@ function createSignUp() {
     formblock.id = 'formblock';
     body.appendChild(formblock)
     const inputs = [
+      {
+          name: 'name',
+          placeholder: 'Name'
+      },
+      {
+          name: 'last_name',
+          placeholder: 'Last name'
+      },
+      {
+          name: 'nick',
+          placeholder: 'Nick'
+      },
         {
             name: 'email',
             type: 'email',
@@ -202,7 +242,9 @@ function createSignUp() {
     form.addEventListener('submit', function (event) {
 
         event.preventDefault();
-
+        const name = form.elements['name'].value;
+        const last_name = form.elements['last_name'].value;
+        const nick = form.elements['nick'].value;
         const email = form.elements['email'].value;
         const password = form.elements['password'].value;
         const password_repeat = form.elements['password_repeat'].value;
@@ -216,25 +258,37 @@ function createSignUp() {
             return
         }
 
+        let formData = new FormData()
+        formData.append("name", name)
+        formData.append("last_name", last_name)
+        formData.append("nick", nick)
+
+        formData.append("password", password)
+        formData.append("email", email)
+
+
         httpReq.doPost({
             callback(res) {
+              console.log(res.status)
                 if (res.status == 208){
                     alert("Email already exist");
                     return;
                 }
-                if (res.status > 300) {
-                    alert("Something was wrong");
+                if (res.status == 400) {
+                    alert("Something is wrong");
+                    return;
+                }
+                if (res.status == 409) {
+                    alert("StatusConflict");
                     return;
                 }
                 createProfile();
             },
             url: '/signup',
-            data: {
-                "email":email,
-                "password":password,
-            }
+            data: formData
         });
     });
+
 }
 
 function createLeaders() {
@@ -285,61 +339,67 @@ function createLeaders() {
       em.textContent = 'Nothing to display';
       body.appendChild(em);*/
 
-    xhr.open('POST', '/liderboards', true);
-    xhr.setRequestHeader('Content-Type', 'text/plain; charset=utf-8');
-    xhr.send('Request');
+    // xhr.open('POST', '/liderboards', true);
+    // xhr.setRequestHeader('Content-Type', 'text/plain; charset=utf-8');
+    // xhr.send('Request');
 
-    xhr.onreadystatechange = function () {
-        if (xhr.readyState !== 4) return;
-        if (xhr.status !== 200) {
-            alert(xhr.status + ': ' + xhr.statusText);
-        } else {
-            const top = JSON.parse(xhr.responseText);
-            /*const d1 = document.createElement('div');
-            const d = document.createElement('h1');
 
-            d.innerText = text;
-            d1.appendChild(d);
-
-            root.appendChild(d1);*/
+    httpReq.doGet({
+      callback(res) {
+          if (res.status > 300) {
+              alert('Something wrong');
+              root.innerHTML = '';
+              createMenu();
+              return;
+          }
+          res.json().then(function(top) {
 
             const tbody = document.createElement('tbody');
 
             let username;
             let score;
+            let age;
 
             Object.entries(top).forEach(function ([id, info]) {
-                username = info.nickname;
-                score = info.score;
+                username = info.nick;
+                score = info.Score;
+                age = info.Age;
 
 
                 const tr = document.createElement('tr');
                 const tdUsername = document.createElement('td');
                 const tdScore = document.createElement('td');
-                // const tdAge = document.createElement('td');
+                 const tdAge = document.createElement('td');
 
                 tdUsername.textContent = username;
                 tdScore.textContent = score;
-                //   tdAge.textContent = age;
+                   tdAge.textContent = age;
 
                 tr.appendChild(tdUsername);
                 tr.appendChild(tdScore);
-                // tr.appendChild(tdAge);
+                 tr.appendChild(tdAge);
 
                 tbody.appendChild(tr);
 
                 table.appendChild(tbody);
-
+              });
             });
-        }
-    };
+          },
+  url: '/leaders'
+
+});
+
+
+
+
+
 
     body.appendChild(table);
     root.appendChild(body);
 
 }
 
-function createProfile() {
+function createProfile(me) {
     root.innerHTML = '';
     const logo = document.createElement('div');
     logo.classList.add("p_name");
@@ -354,11 +414,114 @@ function createProfile() {
     body.id = 'body';
     root.appendChild(body);
 
-    const pLink = document.createElement('p');
-    body.appendChild(pLink);
 
-    const link = createLinkMenu()
-    pLink.appendChild(link);
+    if (me){
+      const formblock = document.createElement('div');
+      const img = document.createElement('img');
+      img.src="static/media/" + me.Uid;
+      body.appendChild(img);
+
+      //Вывод имени, фамилии!
+
+      formblock.id = 'formblock';
+      body.appendChild(formblock);
+
+      const inputs = [
+          {
+              name:'my_file',
+              type:'file'
+          },
+          {
+              name: 'nick',
+              placeholder: me.nick
+          },
+          {
+              name: 'password',
+              type: 'password',
+              placeholder: 'Password'
+          },
+          {
+              name: 'password_repeat',
+              type: 'password',
+              placeholder: 'Repeat Password'
+          },
+          {
+              name: 'submit',
+              type: 'submit',
+              value: 'Submit'
+          }
+      ];
+      const formObj = new Form();
+      const form = formObj.render({ inputs: inputs, formId: 'profileForm' })
+      formblock.appendChild(form);
+
+      const pLink = document.createElement('p');
+      form.appendChild(pLink);
+
+      const link = createLinkMenu();
+      pLink.appendChild(link);
+
+
+      form.addEventListener('submit', function (event) {
+
+      event.preventDefault();
+
+      let formData = new FormData(document.forms.profileForm);
+           //file is actually new FileReader.readAsData(myId.files[0]);
+      //  formData.append("my_file", avatar);
+
+      const password = form.elements['password'].value;
+      const password_repeat = form.elements['password_repeat'].value;
+
+      if (password !== password_repeat) {
+          alert('Passwords is not equals');
+          return;
+        }
+
+        formData.append("password", password)
+
+
+          httpReq.doPost({ // Отправка аватарки
+              callback(res) {
+                  if (res.status > 300) {
+                      alert("Something was wrong");
+                      return;
+                  }
+                  createProfile();
+              },
+              url: '/profile',
+              data: formData
+          });
+
+      });
+    } else {
+      httpReq.doGet({
+        callback(res) {
+          console.log("Create prof")
+          console.log(res.status);
+            if (res.status > 300) {
+                alert('Unauthorized');
+                root.innerHTML = '';
+					      createMenu();
+                return;
+            }
+            //let respon = res.json();
+            //const user = JSON.parse(res.responseText);
+
+            res.json().then(function(user) {
+              root.innerHTML = '';
+              createProfile(user);
+      });
+
+        },
+        url: '/profile'
+      })
+    }
+
+
+
+
+
 }
 
 function createAbout() {
@@ -415,7 +578,6 @@ root.addEventListener("click", function (event) {
     const href = target.dataset.href;
 
     root.innerHTML = '';
-    console.log(href);
     buttons[href]();
 
 });

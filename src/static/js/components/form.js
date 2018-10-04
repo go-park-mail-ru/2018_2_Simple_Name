@@ -10,17 +10,19 @@ export class Form{
     }
     render({ inputs = {}, formId = '' }) {
         const form = document.createElement('form');
+        //form.action="/profile";
         form.id = formId;
+        //form.method = "post";
+        //form.enctype = "multipart/form-data";
         inputs.forEach(function (item) {
             const input = document.createElement('input');
-    
+
             input.name = item.name;
+
             input.type = item.type;
-            if (item.value) {
-                input.value = item.value;
-            }
+
             input.placeholder = item.placeholder;
-    
+
             form.appendChild(input);
             form.appendChild(document.createElement('br'));
         });
