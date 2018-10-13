@@ -15,16 +15,14 @@ import (
 const letterBytes string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 type User struct {
-	Name     string `json:"name"`
-	LastName string `json:"last_name"`
-	Nick     string `json:"nick"`
+	Uid      string
+	Nickname string `json:"nick"`
 	Email    string
 	Password string `json: "-"`
 	KeyWord  string `json: "-"`
 	Score    int    `json: "score"`
 	Age      int    `json: "age"`
 }
-
 type Users map[string]User
 
 var users = make(Users)
@@ -46,7 +44,7 @@ func CORSsettings(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func main() {
-
+	http.HandleFunc("/logout", CORSsettings(logoutHandler))
 	http.HandleFunc("/signin", CORSsettings(signinHandler))
 	http.HandleFunc("/signup", CORSsettings(signupHandler))
 	http.HandleFunc("/profile", CORSsettings(profileHandler))
@@ -58,25 +56,32 @@ func main() {
 	}
 }
 
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	session := new(http.Cookie)
+	session.Name = uidGen()
+	session.Expires = time.Now().Add(-1)
+	http.SetCookie(w, session)
+}
+
 func leadersHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(time.Now().UTC(), "Request from", r.URL.String())
 	fmt.Println("Method", r.Method)
 
 	Leaders := map[int]User{
 		0: User{
-			Nick:  "GRe12",
-			Score: 4321,
-			Age:   12,
+			Nickname: "GRe12",
+			Score:    4321,
+			Age:      12,
 		},
 		1: User{
-			Nick:  "wasaW2",
-			Score: 43121,
-			Age:   13,
+			Nickname: "wasaW2",
+			Score:    43121,
+			Age:      13,
 		},
 		2: User{
-			Nick:  "Feesfs",
-			Score: 432441,
-			Age:   77,
+			Nickname: "Feesfs",
+			Score:    432441,
+			Age:      77,
 		},
 	}
 
@@ -122,7 +127,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 			session.Value = uidGen()
 			session.Expires = time.Now().Add(time.Minute)
 			session.HttpOnly = true
-			http.SetCookie(w,session)
+			http.SetCookie(w, session)
 			sessions[session.Value] = id
 
 			return
@@ -209,8 +214,8 @@ func profileHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusBadRequest)
 		return
 	}
-	if data.Nick != "" {
-		user.Nick = data.Nick
+	if data.Nickname != "" {
+		user.Nickname = data.Nickname
 	}
 	if data.Password != "" {
 		user.Password = data.Password
@@ -222,10 +227,10 @@ func profileHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func loggedIn(r *http.Request) (bool, string){
+func loggedIn(r *http.Request) (bool, string) {
 	val := r.Cookies()
 
-	for i := 0; i < len(val); i++{
+	for i := 0; i < len(val); i++ {
 		id, ok := sessions[val[i].Value]
 		if !ok {
 			continue
@@ -237,7 +242,6 @@ func loggedIn(r *http.Request) (bool, string){
 
 	return false, ""
 }
-
 
 func addUser(user User) (string, bool) {
 	users[user.Email] = user
@@ -275,9 +279,7 @@ func getFormReq(r *http.Request) (*User, error) {
 	user := new(User)
 	user.Email = r.FormValue("email")
 	user.Password = r.FormValue("password")
-	user.Name = r.FormValue("name")
-	user.LastName = r.FormValue("last_name")
-	user.Nick = r.FormValue("nick")
+	user.Nickname = r.FormValue("nick")
 
 	return user, nil
 
@@ -319,7 +321,7 @@ func uidGen() string {
 	n := 15
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letterBytes[rand.Int63() % int64(len(letterBytes))]
+		b[i] = letterBytes[rand.Int63()%int64(len(letterBytes))]
 	}
 	return string(b)
 }
