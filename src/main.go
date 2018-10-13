@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,21 +8,13 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"time"
-
-	//"strings"
-	//"mime"
-	//"mime/multipart"
-	//	"strconv"
-	"bytes"
 )
 
 const letterBytes string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 type User struct {
-	Uid      string
 	Name     string `json:"name"`
 	LastName string `json:"last_name"`
 	Nick     string `json:"nick"`
@@ -38,6 +28,10 @@ type User struct {
 type Users map[string]User
 
 var users = make(Users)
+
+type Sessions map[string]string
+
+var sessions = make(Sessions)
 
 func CORSsettings(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -70,19 +64,16 @@ func leadersHandler(w http.ResponseWriter, r *http.Request) {
 
 	Leaders := map[int]User{
 		0: User{
-			Uid:   "123",
 			Nick:  "GRe12",
 			Score: 4321,
 			Age:   12,
 		},
 		1: User{
-			Uid:   "1232",
 			Nick:  "wasaW2",
 			Score: 43121,
 			Age:   13,
 		},
 		2: User{
-			Uid:   "12123",
 			Nick:  "Feesfs",
 			Score: 432441,
 			Age:   77,
@@ -104,7 +95,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Method", r.Method)
 
 	if r.Method == http.MethodGet {
-		Online, _ := isOnline(r)
+		Online, _ := loggedIn(r)
 		if Online {
 			http.Redirect(w, r, r.Referer(), http.StatusBadRequest)
 			return
@@ -123,20 +114,17 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 
 	if user.Email != "" && user.Password != "" {
 		if !checkExist(*user) {
+
 			user.KeyWord = RandStringBytesRmndr()
 			id, _ := addUser(*user)
 			session := new(http.Cookie)
-			session.Name = id
-			var b bytes.Buffer
-			b.WriteString(user.Email)
-			b.WriteString(user.KeyWord)
-			cValue := md5.Sum(b.Bytes())
-			session.Value = hex.EncodeToString(cValue[:])
+			session.Name = "session_id"
+			session.Value = uidGen()
 			session.Expires = time.Now().Add(time.Minute)
-			//session.Secure = true
-			//session.HttpOnly = true
-			http.SetCookie(w, session)
-			// http.Redirect(w, r, "/profile", http.StatusOK)
+			session.HttpOnly = true
+			http.SetCookie(w,session)
+			sessions[session.Value] = id
+
 			return
 		} else {
 			http.Redirect(w, r, r.Referer(), http.StatusAlreadyReported)
@@ -151,7 +139,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 func signinHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(time.Now().UTC(), "Request from", r.URL.String())
 	fmt.Println("Method", r.Method)
-	Online, _ := isOnline(r)
+	Online, _ := loggedIn(r)
 	if Online {
 		http.Redirect(w, r, r.Referer(), http.StatusBadRequest)
 		return
@@ -170,16 +158,14 @@ func signinHandler(w http.ResponseWriter, r *http.Request) {
 
 	if validateUser(*user) {
 		session := new(http.Cookie)
-		session.Name = user.Uid
-		var b bytes.Buffer
-		b.WriteString(user.Email)
-		b.WriteString(user.KeyWord)
-		cValue := md5.Sum(b.Bytes())
-		session.Value = hex.EncodeToString(cValue[:])
-		session.Expires = time.Now().Add(time.Minute)
-		//session.HttpOnly = true
-		//session.Secure = true
+		session.Name = "session_id"
+		session.Value = uidGen()
+		session.Expires = time.Now().Add(time.Hour)
+		session.HttpOnly = true
 		http.SetCookie(w, session)
+
+		sessions[session.Value] = user.Email
+
 		http.Redirect(w, r, "/profile", http.StatusOK)
 	} else {
 		http.Redirect(w, r, r.Referer(), http.StatusBadRequest)
@@ -191,7 +177,7 @@ func profileHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(time.Now().UTC(), "Request from", r.URL.String())
 	fmt.Println("Method", r.Method)
 
-	Online, id := isOnline(r)
+	Online, id := loggedIn(r)
 
 	if r.Method == http.MethodGet {
 
@@ -236,43 +222,39 @@ func profileHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func isOnline(r *http.Request) (bool, string) { // Сделать цикл по всем кукам
+func loggedIn(r *http.Request) (bool, string){
 	val := r.Cookies()
-	for i := 0; i < len(val); i++ {
-		user, ok := users[val[i].Name]
+
+	for i := 0; i < len(val); i++{
+		id, ok := sessions[val[i].Value]
 		if !ok {
 			continue
+		} else {
+			return true, users[id].Email
 		}
-		var b bytes.Buffer
-		b.WriteString(user.Email)
-		b.WriteString(user.KeyWord)
 
-		hash := md5.Sum(b.Bytes())
-		if hex.EncodeToString(hash[:]) == val[i].Value { // Полученные куки совпадают с нужным хэшом.
-			return true, user.Uid
-		}
 	}
 
 	return false, ""
-
 }
 
+
 func addUser(user User) (string, bool) {
-	user.Uid = uidGen()
-	users[user.Uid] = user
+	users[user.Email] = user
 	fmt.Println(time.Now().UTC(), "Added user", user)
-	return user.Uid, true
+
+	return user.Email, true
 }
 
 func checkExist(user User) bool {
-	if _, ok := users[user.Uid]; ok {
+	if _, ok := users[user.Email]; ok {
 		return true
 	}
 	return false
 }
 
 func validateUser(user User) bool {
-	if mapUser, ok := users[user.Uid]; ok {
+	if mapUser, ok := users[user.Email]; ok {
 		if user.Password == mapUser.Password {
 			return true
 		}
@@ -334,8 +316,10 @@ func uploadFileReq(fileName string, r *http.Request) error {
 }
 
 func uidGen() string {
-	uid, _ := exec.Command("uuidgen").Output()
-	suid := string(uid[:])
-	suid = suid[:len(suid)-1]
-	return suid
+	n := 15
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Int63() % int64(len(letterBytes))]
+	}
+	return string(b)
 }
