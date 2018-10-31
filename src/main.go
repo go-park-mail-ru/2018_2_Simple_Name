@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
@@ -15,14 +16,16 @@ import (
 const letterBytes string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 type User struct {
-	Uid      string
-	Nickname string `json:"nick"`
-	Email    string
-	Password string `json: "-"`
-	KeyWord  string `json: "-"`
-	Score    int    `json: "score"`
-	Age      int    `json: "age"`
+	Name     string `json:"name"`
+	LastName string `json:"last_name"`
+	Nick     string `json:"nick"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	KeyWord  string `json:"-"`
+	Score    int    `json:"score"`
+	Age      int    `json:"age"`
 }
+
 type Users map[string]User
 
 var users = make(Users)
@@ -34,33 +37,31 @@ var sessions = make(Sessions)
 func CORSsettings(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Origin", "https://simplegame.now.sh")
+		w.Header().Set("Access-Control-Allow-Origin", "http://127.0.0.1:3000")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Max-Age", "86400")
 		w.Header().Set("Access-Control-Allow-Headers",
 			"Content-Type, User-Agent, Cache-Control, Accept, X-Requested-With, If-Modified-Since")
-		next.ServeHTTP(w, r)
+		if r.Method == http.MethodOptions{
+			return
+		} else {
+			next.ServeHTTP(w, r)
+		}
 	})
 }
 
 func main() {
-	http.HandleFunc("/logout", CORSsettings(logoutHandler))
+
 	http.HandleFunc("/signin", CORSsettings(signinHandler))
 	http.HandleFunc("/signup", CORSsettings(signupHandler))
 	http.HandleFunc("/profile", CORSsettings(profileHandler))
 	http.HandleFunc("/leaders", CORSsettings(leadersHandler))
+	http.HandleFunc("/islogged", CORSsettings(islogged))
 
 	fmt.Println("starting server at :8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatalf("cannot listen: %s", err)
 	}
-}
-
-func logoutHandler(w http.ResponseWriter, r *http.Request) {
-	session := new(http.Cookie)
-	session.Name = uidGen()
-	session.Expires = time.Now().Add(-1)
-	http.SetCookie(w, session)
 }
 
 func leadersHandler(w http.ResponseWriter, r *http.Request) {
@@ -69,19 +70,19 @@ func leadersHandler(w http.ResponseWriter, r *http.Request) {
 
 	Leaders := map[int]User{
 		0: User{
-			Nickname: "GRe12",
-			Score:    4321,
-			Age:      12,
+			Nick:  "GRe12",
+			Score: 4321,
+			Age:   12,
 		},
 		1: User{
-			Nickname: "wasaW2",
-			Score:    43121,
-			Age:      13,
+			Nick:  "wasaW2",
+			Score: 43121,
+			Age:   13,
 		},
 		2: User{
-			Nickname: "Feesfs",
-			Score:    432441,
-			Age:      77,
+			Nick:  "Feesfs",
+			Score: 432441,
+			Age:   77,
 		},
 	}
 
@@ -100,21 +101,17 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Method", r.Method)
 
 	if r.Method == http.MethodGet {
-		Online, _ := loggedIn(r)
-		if Online {
-			http.Redirect(w, r, r.Referer(), http.StatusBadRequest)
-			return
-		} else {
-			http.Redirect(w, r, r.Referer(), http.StatusOK)
-			return
-		}
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
-	user, err := getFormReq(r)
+	//user, err := getFormReq(r)
+
+	user, err := getJSONReq(r)
 
 	if err != nil {
-		fmt.Println(err.Error())
-		http.Redirect(w, r, r.Referer(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	if user.Email != "" && user.Password != "" {
@@ -125,18 +122,20 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 			session := new(http.Cookie)
 			session.Name = "session_id"
 			session.Value = uidGen()
-			session.Expires = time.Now().Add(time.Minute)
+			session.Expires = time.Now().Add(time.Second)
 			session.HttpOnly = true
-			http.SetCookie(w, session)
+			http.SetCookie(w,session)
 			sessions[session.Value] = id
+			users[user.Email] = *user
 
+			w.WriteHeader(http.StatusCreated)
 			return
 		} else {
-			http.Redirect(w, r, r.Referer(), http.StatusAlreadyReported)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 	} else {
-		http.Redirect(w, r, r.Referer(), http.StatusConflict)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 }
@@ -144,22 +143,24 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 func signinHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(time.Now().UTC(), "Request from", r.URL.String())
 	fmt.Println("Method", r.Method)
-	Online, _ := loggedIn(r)
-	if Online {
-		http.Redirect(w, r, r.Referer(), http.StatusBadRequest)
-		return
-	}
+
 	if r.Method == http.MethodGet {
-		http.Redirect(w, r, r.Referer(), http.StatusOK)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	user, err := getFormReq(r)
+	//user, err := getFormReq(r)
+
+	user, err := getJSONReq(r)
+
 	if err != nil {
 		fmt.Println(err.Error())
-		http.Redirect(w, r, r.Referer(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	fmt.Println(user.Email)
+	fmt.Println(user.Password)
 
 	if validateUser(*user) {
 		session := new(http.Cookie)
@@ -171,9 +172,10 @@ func signinHandler(w http.ResponseWriter, r *http.Request) {
 
 		sessions[session.Value] = user.Email
 
-		http.Redirect(w, r, "/profile", http.StatusOK)
+		w.WriteHeader(http.StatusOK)
+		return
 	} else {
-		http.Redirect(w, r, r.Referer(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 }
@@ -182,17 +184,17 @@ func profileHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(time.Now().UTC(), "Request from", r.URL.String())
 	fmt.Println("Method", r.Method)
 
-	Online, id := loggedIn(r)
+	//Online, id := loggedIn(r)
+	var id = ""
 
 	if r.Method == http.MethodGet {
 
-		if !Online {
-			http.Redirect(w, r, "/login", http.StatusBadRequest)
-			return
-		}
+		//if !Online {
+		//
+		//	return
+		//}
 		userJson, err := json.Marshal(users[id])
 		if err != nil {
-			http.Redirect(w, r, "/", http.StatusBadRequest)
 			return
 		}
 
@@ -204,44 +206,47 @@ func profileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := uploadFileReq(id, r); err != nil {
-		http.Redirect(w, r, "/profile", http.StatusBadRequest)
+
 		return
 	}
 
 	user := users[id]
 	data, err := getFormReq(r)
 	if err != nil {
-		http.Redirect(w, r, "/", http.StatusBadRequest)
 		return
 	}
-	if data.Nickname != "" {
-		user.Nickname = data.Nickname
+	if data.Nick != "" {
+		user.Nick = data.Nick
 	}
 	if data.Password != "" {
 		user.Password = data.Password
 	}
 	users[id] = user
 
-	http.Redirect(w, r, "/profile", http.StatusOK)
 	return
 
 }
 
-func loggedIn(r *http.Request) (bool, string) {
+func islogged(w http.ResponseWriter, r *http.Request) {
+	fmt.Println(time.Now().UTC(), "Request from", r.URL.String())
+	fmt.Println("Method", r.Method)
+
 	val := r.Cookies()
 
-	for i := 0; i < len(val); i++ {
-		id, ok := sessions[val[i].Value]
+	for i := 0; i < len(val); i++{
+		_, ok := sessions[val[i].Value]
 		if !ok {
 			continue
 		} else {
-			return true, users[id].Email
+			w.WriteHeader(http.StatusOK)
+			return
 		}
 
 	}
-
-	return false, ""
+	w.WriteHeader(http.StatusBadRequest)
+	return
 }
+
 
 func addUser(user User) (string, bool) {
 	users[user.Email] = user
@@ -258,6 +263,14 @@ func checkExist(user User) bool {
 }
 
 func validateUser(user User) bool {
+	fmt.Println(users)
+
+
+	fmt.Println("User exist: ", users[user.Email].Email)
+	fmt.Println("User: ", users[user.Email].Password)
+
+	fmt.Println("User: ", user.Email)
+	fmt.Println("Password: ", user.Password)
 	if mapUser, ok := users[user.Email]; ok {
 		if user.Password == mapUser.Password {
 			return true
@@ -275,22 +288,36 @@ func RandStringBytesRmndr() string {
 	return string(b)
 }
 
+func getJSONReq(r *http.Request) (*User, error) {
+	body, err := ioutil.ReadAll(r.Body)
+	defer r.Body.Close()
+
+	if err != nil {
+		fmt.Println("Ошибка чтения 1: ", err.Error())
+		return nil, err
+	}
+
+	user := new(User)
+
+	err = json.Unmarshal(body, user)
+
+	if err != nil {
+		fmt.Println("Ошибка чтения 2: ", err.Error())
+		return nil, err
+	}
+
+	return user, nil
+}
+
 func getFormReq(r *http.Request) (*User, error) {
 	user := new(User)
 	user.Email = r.FormValue("email")
 	user.Password = r.FormValue("password")
-	user.Nickname = r.FormValue("nick")
+	user.Name = r.FormValue("name")
+	user.LastName = r.FormValue("last_name")
+	user.Nick = r.FormValue("nick")
 
 	return user, nil
-
-	// body, err := ioutil.ReadAll(r.Body)
-	// defer r.Body.Close() // важный пункт!
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// user := new(User)
-	// err = json.Unmarshal(body, user)
-	// return user, err
 }
 
 func uploadFileReq(fileName string, r *http.Request) error {
@@ -321,7 +348,7 @@ func uidGen() string {
 	n := 15
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letterBytes[rand.Int63()%int64(len(letterBytes))]
+		b[i] = letterBytes[rand.Int63() % int64(len(letterBytes))]
 	}
 	return string(b)
 }
