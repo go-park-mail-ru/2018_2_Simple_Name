@@ -1,38 +1,24 @@
 package main
 
 import (
+	"./models"
+	"./db"
+	"./session"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 )
 
-const letterBytes string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-type User struct {
-	Name     string `json:"name"`
-	LastName string `json:"last_name"`
-	Nick     string `json:"nick"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	KeyWord  string `json:"-"`
-	Score    int    `json:"score"`
-	Age      int    `json:"age"`
-}
+//type Sessions map[string]string
 
-type Users map[string]User
-
-var users = make(Users)
-
-type Sessions map[string]string
-
-var sessions = make(Sessions)
+//var sessions = make(Sessions)
 
 func CORSsettings(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -50,7 +36,21 @@ func CORSsettings(next http.HandlerFunc) http.HandlerFunc {
 	})
 }
 
+var postgres models.UserService = &db.PostgresUserService{}
+var redis models.UserSessionService = &session.RedisSessionService{}
+
 func main() {
+	postgres.InitService()
+	obj, err := redis.InitService()
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	defer obj.Close() // Не будет работать
+
+	//var session = models.UserSession{}
 
 	http.HandleFunc("/signin", CORSsettings(signinHandler))
 	http.HandleFunc("/signup", CORSsettings(signupHandler))
@@ -68,18 +68,18 @@ func leadersHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(time.Now().UTC(), "Request from", r.URL.String())
 	fmt.Println("Method", r.Method)
 
-	Leaders := map[int]User{
-		0: User{
+	Leaders := map[int]models.User{
+		0: models.User{
 			Nick:  "GRe12",
 			Score: 4321,
 			Age:   12,
 		},
-		1: User{
+		1: models.User{
 			Nick:  "wasaW2",
 			Score: 43121,
 			Age:   13,
 		},
-		2: User{
+		2: models.User{
 			Nick:  "Feesfs",
 			Score: 432441,
 			Age:   77,
@@ -114,19 +114,30 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if user.Email != "" && user.Password != "" {
-		if !checkExist(*user) {
+	existUser, err := postgres.GetUser(user.Email)
 
-			user.KeyWord = RandStringBytesRmndr()
-			id, _ := addUser(*user)
-			session := new(http.Cookie)
-			session.Name = "session_id"
-			session.Value = uidGen()
-			session.Expires = time.Now().Add(time.Second)
-			session.HttpOnly = true
-			http.SetCookie(w,session)
-			sessions[session.Value] = id
-			users[user.Email] = *user
+	if err != nil {
+		fmt.Println("Getuser error: ", err.Error())
+	}
+
+	if user.Email != "" && user.Password != "" {
+		if existUser == nil {
+
+			err := postgres.CreateUser(user)
+
+			if err != nil {
+				fmt.Println(err.Error())
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			err = session.Create(redis, user, &w)
+
+			if err != nil {
+				fmt.Println("Ошибка ses.create: ", err.Error())
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 
 			w.WriteHeader(http.StatusCreated)
 			return
@@ -162,15 +173,17 @@ func signinHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(user.Email)
 	fmt.Println(user.Password)
 
-	if validateUser(*user) {
-		session := new(http.Cookie)
-		session.Name = "session_id"
-		session.Value = uidGen()
-		session.Expires = time.Now().Add(time.Hour)
-		session.HttpOnly = true
-		http.SetCookie(w, session)
+	existUser, err := postgres.GetUser(user.Email)
 
-		sessions[session.Value] = user.Email
+	if err != nil || existUser == nil {
+		fmt.Println("Signin fail: ", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if existUser.Password == user.Password {
+
+		session.Create(redis, user, &w)
 
 		w.WriteHeader(http.StatusOK)
 		return
@@ -184,111 +197,126 @@ func profileHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(time.Now().UTC(), "Request from", r.URL.String())
 	fmt.Println("Method", r.Method)
 
-	//Online, id := loggedIn(r)
-	var id = ""
+	sess, err := findSession(r)
+
+	if err != nil || sess == nil {
+		fmt.Println(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	if r.Method == http.MethodGet {
+		user, err := postgres.GetUser(sess.Email)
 
-		//if !Online {
-		//
-		//	return
-		//}
-		userJson, err := json.Marshal(users[id])
 		if err != nil {
+			fmt.Println(err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		userInfo, err := json.Marshal(user)
+
+		if err != nil {
+			fmt.Println(err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Status-Code", "200")
 
-		w.Write(userJson)
+		w.Write(userInfo)
 		return
 	}
 
-	if err := uploadFileReq(id, r); err != nil {
+	//if err := uploadFileReq(id, r); err != nil {
+	//
+	//	return
+	//}
 
-		return
-	}
-
-	user := users[id]
-	data, err := getFormReq(r)
-	if err != nil {
-		return
-	}
-	if data.Nick != "" {
-		user.Nick = data.Nick
-	}
-	if data.Password != "" {
-		user.Password = data.Password
-	}
-	users[id] = user
+	//user := users[id]
+	//data, err := getFormReq(r)
+	//if err != nil {
+	//	return
+	//}
+	//if data.Nick != "" {
+	//	user.Nick = data.Nick
+	//}
+	//if data.Password != "" {
+	//	user.Password = data.Password
+	//}
+	//users[id] = user
 
 	return
 
+}
+
+func findSession(r *http.Request) (*models.UserSession, error) {
+	val := r.Cookies()
+
+	for i := 0; i < len(val); i++{
+		fmt.Println(val[i].Value)
+		sess, err := session.Get(redis, val[i].Value)
+		if sess == nil {
+			continue
+		} else {
+			return sess, nil
+		}
+		if err != nil {
+			fmt.Println("islogged error: ", err.Error())
+			return nil, err
+		}
+
+	}
+	return nil, nil
 }
 
 func islogged(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(time.Now().UTC(), "Request from", r.URL.String())
 	fmt.Println("Method", r.Method)
 
-	val := r.Cookies()
+	sess, err := findSession(r)
 
-	for i := 0; i < len(val); i++{
-		_, ok := sessions[val[i].Value]
-		if !ok {
-			continue
-		} else {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
+	if err != nil {
+		fmt.Println(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
+
+	if sess != nil {
+		w.WriteHeader(http.StatusOK)
+		return
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	//val := r.Cookies()
+	//
+	//for i := 0; i < len(val); i++{
+	//	fmt.Println(val[i].Value)
+	//	sess, err := session.Get(redis, val[i].Value)
+	//	if sess == nil {
+	//		continue
+	//	}
+	//	if err != nil {
+	//		fmt.Println("islogged error: ", err.Error())
+	//		return
+	//	}
+	//
+	//	if sess.Email == "" { // != nil? можно поставить так.
+	//		continue
+	//	} else {
+	//		w.WriteHeader(http.StatusOK)
+	//		return
+	//	}
+	//
+	//}
 	w.WriteHeader(http.StatusBadRequest)
 	return
 }
 
-
-func addUser(user User) (string, bool) {
-	users[user.Email] = user
-	fmt.Println(time.Now().UTC(), "Added user", user)
-
-	return user.Email, true
-}
-
-func checkExist(user User) bool {
-	if _, ok := users[user.Email]; ok {
-		return true
-	}
-	return false
-}
-
-func validateUser(user User) bool {
-	fmt.Println(users)
-
-
-	fmt.Println("User exist: ", users[user.Email].Email)
-	fmt.Println("User: ", users[user.Email].Password)
-
-	fmt.Println("User: ", user.Email)
-	fmt.Println("Password: ", user.Password)
-	if mapUser, ok := users[user.Email]; ok {
-		if user.Password == mapUser.Password {
-			return true
-		}
-	}
-	return false
-}
-
-func RandStringBytesRmndr() string {
-	n := 10
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letterBytes[rand.Int63()%int64(len(letterBytes))]
-	}
-	return string(b)
-}
-
-func getJSONReq(r *http.Request) (*User, error) {
+func getJSONReq(r *http.Request) (*models.User, error) {
 	body, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 
@@ -297,7 +325,7 @@ func getJSONReq(r *http.Request) (*User, error) {
 		return nil, err
 	}
 
-	user := new(User)
+	user := new(models.User)
 
 	err = json.Unmarshal(body, user)
 
@@ -309,8 +337,8 @@ func getJSONReq(r *http.Request) (*User, error) {
 	return user, nil
 }
 
-func getFormReq(r *http.Request) (*User, error) {
-	user := new(User)
+func getFormReq(r *http.Request) (*models.User, error) {
+	user := new(models.User)
 	user.Email = r.FormValue("email")
 	user.Password = r.FormValue("password")
 	user.Name = r.FormValue("name")
@@ -342,13 +370,4 @@ func uploadFileReq(fileName string, r *http.Request) error {
 
 	io.Copy(dst, file)
 	return nil
-}
-
-func uidGen() string {
-	n := 15
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letterBytes[rand.Int63() % int64(len(letterBytes))]
-	}
-	return string(b)
 }
