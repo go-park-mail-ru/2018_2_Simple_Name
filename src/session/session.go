@@ -41,13 +41,12 @@ func Get(service models.UserSessionService, sessionId string) (*models.UserSessi
 
 	uSession.Id = sessionId
 	uSession.Email, err = service.Get(sessionId)
+	if err == redis.ErrNil {
+		return nil, nil
+	}
 
 	if err != nil {
 		return nil, err
-	}
-
-	if err == redis.ErrNil {
-		return nil, nil
 	}
 
 	return uSession, nil

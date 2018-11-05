@@ -1,24 +1,23 @@
 package main
 
 import (
-	"./models"
 	"./db"
+	"./models"
 	"./session"
+	"SimpleGame/2018_2_Simple_Name/src/logging"
 	"encoding/json"
 	"fmt"
+	"github.com/asaskevich/govalidator"
+	"go.uber.org/zap"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 )
-
-
-//type Sessions map[string]string
-
-//var sessions = make(Sessions)
 
 func CORSsettings(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -36,37 +35,72 @@ func CORSsettings(next http.HandlerFunc) http.HandlerFunc {
 	})
 }
 
+func IsLoggedIn(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sess, err := findSession(r)
+
+		if err != nil {
+			//fmt.Println(err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if sess != nil {
+			//w.WriteHeader(http.StatusOK)
+			//return
+
+			next.ServeHTTP(w, r)
+		} else {
+			//w.WriteHeader(http.StatusBadRequest)
+			next.ServeHTTP(w, r)
+			return
+		}
+	})
+	
+}
+
 var postgres models.UserService = &db.PostgresUserService{}
 var redis models.UserSessionService = &session.RedisSessionService{}
+var logger, _ = zap.NewProduction()
+var sugar = logger.Sugar()
 
 func main() {
+
+	defer logger.Sync()
+
+
 	postgres.InitService()
 	obj, err := redis.InitService()
 
 	if err != nil {
-		fmt.Println(err.Error())
+		//logging.ErrorLog("Failed open redis", err, sugar)
+		sugar.Errorw("Failed open redis",
+			"error", err,
+			"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+		////fmt.Println(err.Error())
 		return
 	}
 
 	defer obj.Close() // Не будет работать
 
-	//var session = models.UserSession{}
+	siteMux := http.NewServeMux()
+	siteMux.HandleFunc("/sugnup", CORSsettings(signupHandler))
+	siteMux.HandleFunc("/signup", CORSsettings(signupHandler))
+	siteMux.HandleFunc("/profile", CORSsettings(profileHandler))
+	siteMux.HandleFunc("/leaders", CORSsettings(leadersHandler))
+	siteMux.HandleFunc("/islogged", CORSsettings(islogged))
 
-	http.HandleFunc("/signin", CORSsettings(signinHandler))
-	http.HandleFunc("/signup", CORSsettings(signupHandler))
-	http.HandleFunc("/profile", CORSsettings(profileHandler))
-	http.HandleFunc("/leaders", CORSsettings(leadersHandler))
-	http.HandleFunc("/islogged", CORSsettings(islogged))
+	siteHandler := logging.AccessLogMiddleware(siteMux, sugar)
 
-	fmt.Println("starting server at :8080")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	sugar.Infow("starting server at :8080")
+
+	//fmt.Println("starting server at :8080")
+	if err := http.ListenAndServe(":8080", siteHandler); err != nil {
 		log.Fatalf("cannot listen: %s", err)
 	}
 }
 
 func leadersHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println(time.Now().UTC(), "Request from", r.URL.String())
-	fmt.Println("Method", r.Method)
 
 	Leaders := map[int]models.User{
 		0: models.User{
@@ -96,9 +130,21 @@ func leadersHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func ValidUser(user *models.User) (bool, error) {
+	validEmail := govalidator.IsEmail(user.Email)
+	validPassword := govalidator.HasUpperCase(user.Password) && govalidator.HasLowerCase(user.Password) && govalidator.IsByteLength(user.Password, 6,12)
+	validNick := !govalidator.HasWhitespace(user.Nick)
+	validName := govalidator.IsAlpha(user.Name)
+	validLastName := govalidator.IsAlpha(user.LastName)
+
+	if validEmail && validPassword && validNick && validName && validLastName{
+		return true, nil
+	} else {
+		return false, nil
+	}
+}
+
 func signupHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println(time.Now().UTC(), "Request from", r.URL.String())
-	fmt.Println("Method", r.Method)
 
 	if r.Method == http.MethodGet {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -110,6 +156,9 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := getJSONReq(r)
 
 	if err != nil {
+		sugar.Errorw("Failed get JSON",
+			"error", err,
+			"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -117,16 +166,26 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 	existUser, err := postgres.GetUser(user.Email)
 
 	if err != nil {
-		fmt.Println("Getuser error: ", err.Error())
+		//fmt.Println("Getuser error: ", err.Error())
 	}
 
-	if user.Email != "" && user.Password != "" {
+	validUser, _ := ValidUser(user)
+
+	if validUser {
+		fmt.Println("ВАЛИД")
+	} else {
+		fmt.Println("НЕ ВАЛИД")
+	}
+
+	if validUser {
 		if existUser == nil {
 
 			err := postgres.CreateUser(user)
 
 			if err != nil {
-				fmt.Println(err.Error())
+				sugar.Errorw("Failed create USER",
+					"error", err,
+					"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -134,7 +193,9 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 			err = session.Create(redis, user, &w)
 
 			if err != nil {
-				fmt.Println("Ошибка ses.create: ", err.Error())
+				sugar.Errorw("Failed create SESSION",
+					"error", err,
+					"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -152,8 +213,6 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func signinHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println(time.Now().UTC(), "Request from", r.URL.String())
-	fmt.Println("Method", r.Method)
 
 	if r.Method == http.MethodGet {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -165,21 +224,29 @@ func signinHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := getJSONReq(r)
 
 	if err != nil {
-		fmt.Println(err.Error())
+		sugar.Errorw("Failed get JSON",
+			"error", err,
+			"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Println(user.Email)
-	fmt.Println(user.Password)
+	validEmail := govalidator.IsEmail(user.Email)
+
+	if !validEmail {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
 	existUser, err := postgres.GetUser(user.Email)
 
-	if err != nil || existUser == nil {
-		fmt.Println("Signin fail: ", err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	//if err != nil || existUser == nil {
+	//	sugar.Errorw("Failed get USER",
+	//		"error", err,
+	//		"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+	//	w.WriteHeader(http.StatusInternalServerError)
+	//	return
+	//}
 
 	if existUser.Password == user.Password {
 
@@ -193,14 +260,14 @@ func signinHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func profileHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println(time.Now().UTC(), "Request from", r.URL.String())
-	fmt.Println("Method", r.Method)
+func profileHandler(w http.ResponseWriter, r *http.Request) {// Валидировать данные
 
 	sess, err := findSession(r)
 
 	if err != nil || sess == nil {
-		fmt.Println(err.Error())
+		sugar.Errorw("Failed get SESSION",
+			"error", err,
+			"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -208,16 +275,18 @@ func profileHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		user, err := postgres.GetUser(sess.Email)
 
-		if err != nil {
-			fmt.Println(err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
+		//if err != nil { // Полная проверка ошибки?
+		//	//fmt.Println(err.Error())
+		//	w.WriteHeader(http.StatusInternalServerError)
+		//	return
+		//}
 
 		userInfo, err := json.Marshal(user)
 
 		if err != nil {
-			fmt.Println(err.Error())
+			sugar.Errorw("Failed marshal json",
+				"error", err,
+				"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -255,30 +324,32 @@ func findSession(r *http.Request) (*models.UserSession, error) {
 	val := r.Cookies()
 
 	for i := 0; i < len(val); i++{
-		fmt.Println(val[i].Value)
+		//fmt.Println(val[i].Value)
 		sess, err := session.Get(redis, val[i].Value)
+
+		if err != nil {
+			return nil, err
+		}
+
 		if sess == nil {
 			continue
 		} else {
 			return sess, nil
 		}
-		if err != nil {
-			fmt.Println("islogged error: ", err.Error())
-			return nil, err
-		}
+
 
 	}
 	return nil, nil
 }
 
 func islogged(w http.ResponseWriter, r *http.Request) {
-	fmt.Println(time.Now().UTC(), "Request from", r.URL.String())
-	fmt.Println("Method", r.Method)
 
 	sess, err := findSession(r)
 
 	if err != nil {
-		fmt.Println(err.Error())
+		sugar.Errorw("Failed find SESSION",
+				"error", err,
+				"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -294,13 +365,13 @@ func islogged(w http.ResponseWriter, r *http.Request) {
 	//val := r.Cookies()
 	//
 	//for i := 0; i < len(val); i++{
-	//	fmt.Println(val[i].Value)
+	////	fmt.Println(val[i].Value)
 	//	sess, err := session.Get(redis, val[i].Value)
 	//	if sess == nil {
 	//		continue
 	//	}
 	//	if err != nil {
-	//		fmt.Println("islogged error: ", err.Error())
+	////		fmt.Println("islogged error: ", err.Error())
 	//		return
 	//	}
 	//
@@ -321,7 +392,7 @@ func getJSONReq(r *http.Request) (*models.User, error) {
 	defer r.Body.Close()
 
 	if err != nil {
-		fmt.Println("Ошибка чтения 1: ", err.Error())
+		//fmt.Println("Ошибка чтения 1: ", err.Error())
 		return nil, err
 	}
 
@@ -330,7 +401,7 @@ func getJSONReq(r *http.Request) (*models.User, error) {
 	err = json.Unmarshal(body, user)
 
 	if err != nil {
-		fmt.Println("Ошибка чтения 2: ", err.Error())
+		//fmt.Println("Ошибка чтения 2: ", err.Error())
 		return nil, err
 	}
 
@@ -350,13 +421,13 @@ func getFormReq(r *http.Request) (*models.User, error) {
 
 func uploadFileReq(fileName string, r *http.Request) error {
 	if err := r.ParseMultipartForm(32 << 20); nil != err {
-		fmt.Println(err.Error())
+		//fmt.Println(err.Error())
 		return err
 	}
 
 	file, _, err := r.FormFile("my_file")
 	if err != nil {
-		fmt.Println(err.Error())
+		//fmt.Println(err.Error())
 		return nil
 	}
 	defer file.Close()
@@ -364,7 +435,7 @@ func uploadFileReq(fileName string, r *http.Request) error {
 	dst, err1 := os.Create(filepath.Join("../src/static/media", fileName))
 
 	if err1 != nil {
-		fmt.Println(err1.Error())
+		//fmt.Println(err1.Error())
 		return err
 	}
 
