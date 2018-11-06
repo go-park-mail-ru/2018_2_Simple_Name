@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/asaskevich/govalidator"
+	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 	"io"
 	"io/ioutil"
@@ -68,7 +69,6 @@ func main() {
 
 	defer logger.Sync()
 
-
 	postgres.InitService()
 	obj, err := redis.InitService()
 
@@ -84,8 +84,8 @@ func main() {
 	defer obj.Close() // Не будет работать
 
 	siteMux := http.NewServeMux()
-	siteMux.HandleFunc("/sugnup", CORSsettings(signupHandler))
 	siteMux.HandleFunc("/signup", CORSsettings(signupHandler))
+	siteMux.HandleFunc("/signin", CORSsettings(signinHandler))
 	siteMux.HandleFunc("/profile", CORSsettings(profileHandler))
 	siteMux.HandleFunc("/leaders", CORSsettings(leadersHandler))
 	siteMux.HandleFunc("/islogged", CORSsettings(islogged))
@@ -130,17 +130,17 @@ func leadersHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func ValidUser(user *models.User) (bool, error) {
+func ValidUser(user *models.User) (bool) {
 	validEmail := govalidator.IsEmail(user.Email)
 	validPassword := govalidator.HasUpperCase(user.Password) && govalidator.HasLowerCase(user.Password) && govalidator.IsByteLength(user.Password, 6,12)
 	validNick := !govalidator.HasWhitespace(user.Nick)
-	validName := govalidator.IsAlpha(user.Name)
-	validLastName := govalidator.IsAlpha(user.LastName)
+	validName := govalidator.IsAlpha(user.Name) && !govalidator.HasWhitespace(user.Nick)
+	validLastName := govalidator.IsAlpha(user.LastName) && !govalidator.HasWhitespace(user.Nick)
 
 	if validEmail && validPassword && validNick && validName && validLastName{
-		return true, nil
+		return true
 	} else {
-		return false, nil
+		return false
 	}
 }
 
@@ -169,7 +169,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 		//fmt.Println("Getuser error: ", err.Error())
 	}
 
-	validUser, _ := ValidUser(user)
+	validUser := ValidUser(user)
 
 	if validUser {
 		fmt.Println("ВАЛИД")
@@ -260,7 +260,13 @@ func signinHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func profileHandler(w http.ResponseWriter, r *http.Request) {// Валидировать данные
+func profileHandler(w http.ResponseWriter, r *http.Request) { // Валидировать данные
+
+	vars := mux.Vars(r)
+
+	pId := vars["id"]
+
+	fmt.Println(pId)
 
 	sess, err := findSession(r)
 
@@ -296,26 +302,56 @@ func profileHandler(w http.ResponseWriter, r *http.Request) {// Валидиро
 
 		w.Write(userInfo)
 		return
+	} else if r.Method == http.MethodPut {
+
+		if err := uploadFileReq(pId, r); err != nil {
+			sugar.Errorw("Failed put file",
+				"error", err,
+				"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		existUserData, err := postgres.GetUser(sess.Email)
+
+		if err != nil || existUserData == nil {
+			sugar.Errorw("Failed get user",
+				"error", err,
+				"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		newUserData, err := getJSONReq(r)
+
+		if err != nil {
+			sugar.Errorw("Failed get json",
+				"error", err,
+				"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		validData := ValidUser(newUserData)
+
+		if validData {
+			err := postgres.UpdateUser(existUserData, newUserData)
+
+			if err != nil {
+				sugar.Errorw("Failed update user",
+					"error", err,
+					"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 	}
 
-	//if err := uploadFileReq(id, r); err != nil {
-	//
-	//	return
-	//}
-
-	//user := users[id]
-	//data, err := getFormReq(r)
-	//if err != nil {
-	//	return
-	//}
-	//if data.Nick != "" {
-	//	user.Nick = data.Nick
-	//}
-	//if data.Password != "" {
-	//	user.Password = data.Password
-	//}
-	//users[id] = user
-
+	w.WriteHeader(http.StatusMethodNotAllowed)
 	return
 
 }
@@ -421,13 +457,11 @@ func getFormReq(r *http.Request) (*models.User, error) {
 
 func uploadFileReq(fileName string, r *http.Request) error {
 	if err := r.ParseMultipartForm(32 << 20); nil != err {
-		//fmt.Println(err.Error())
 		return err
 	}
 
 	file, _, err := r.FormFile("my_file")
 	if err != nil {
-		//fmt.Println(err.Error())
 		return nil
 	}
 	defer file.Close()
@@ -435,7 +469,6 @@ func uploadFileReq(fileName string, r *http.Request) error {
 	dst, err1 := os.Create(filepath.Join("../src/static/media", fileName))
 
 	if err1 != nil {
-		//fmt.Println(err1.Error())
 		return err
 	}
 
