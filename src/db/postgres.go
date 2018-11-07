@@ -1,7 +1,7 @@
 package db
 
 import (
-	"../models"
+	"SimpleGame/models"
 	"database/sql"
 	"fmt"
 

@@ -1,8 +1,8 @@
 package session
 
 import (
-	"../models"
-	"SimpleGame/2018_2_Simple_Name/src/generator"
+	"SimpleGame/models"
+	"SimpleGame/generator"
 	"fmt"
 	"github.com/gomodule/redigo/redis"
 	"net/http"
