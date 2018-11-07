@@ -1,15 +1,13 @@
 package main
 
 import (
-	"./db"
-	"./models"
-	"./session"
-	"SimpleGame/2018_2_Simple_Name/src/logging"
+	"SimpleGame/db"
+	"SimpleGame/game"
+	"SimpleGame/logging"
+	"SimpleGame/models"
+	"SimpleGame/session"
 	"encoding/json"
 	"fmt"
-	"github.com/asaskevich/govalidator"
-	"github.com/gorilla/mux"
-	"go.uber.org/zap"
 	"io"
 	"io/ioutil"
 	"log"
@@ -18,6 +16,11 @@ import (
 	"path/filepath"
 	"strconv"
 	"time"
+
+	"github.com/gorilla/websocket"
+	"github.com/asaskevich/govalidator"
+	"github.com/gorilla/mux"
+	"go.uber.org/zap"
 )
 
 func CORSsettings(next http.HandlerFunc) http.HandlerFunc {
@@ -28,7 +31,7 @@ func CORSsettings(next http.HandlerFunc) http.HandlerFunc {
 		w.Header().Set("Access-Control-Max-Age", "86400")
 		w.Header().Set("Access-Control-Allow-Headers",
 			"Content-Type, User-Agent, Cache-Control, Accept, X-Requested-With, If-Modified-Since")
-		if r.Method == http.MethodOptions{
+		if r.Method == http.MethodOptions {
 			return
 		} else {
 			next.ServeHTTP(w, r)
@@ -57,13 +60,14 @@ func IsLoggedIn(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 	})
-	
+
 }
 
 var postgres models.UserService = &db.PostgresUserService{}
 var redis models.UserSessionService = &session.RedisSessionService{}
 var logger, _ = zap.NewProduction()
 var sugar = logger.Sugar()
+var g *game.Game = game.NewGame()
 
 func main() {
 
@@ -76,12 +80,14 @@ func main() {
 		//logging.ErrorLog("Failed open redis", err, sugar)
 		sugar.Errorw("Failed open redis",
 			"error", err,
-			"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
 		////fmt.Println(err.Error())
 		return
 	}
 
 	defer obj.Close() // Не будет работать
+
+	go g.Run()
 
 	siteMux := http.NewServeMux()
 	siteMux.HandleFunc("/signup", CORSsettings(signupHandler))
@@ -89,6 +95,7 @@ func main() {
 	siteMux.HandleFunc("/profile", CORSsettings(profileHandler))
 	siteMux.HandleFunc("/leaders", CORSsettings(leadersHandler))
 	siteMux.HandleFunc("/islogged", CORSsettings(islogged))
+	siteMux.HandleFunc("/startgame", CORSsettings(startGame))
 
 	siteHandler := logging.AccessLogMiddleware(siteMux, sugar)
 
@@ -98,6 +105,27 @@ func main() {
 	if err := http.ListenAndServe(":8080", siteHandler); err != nil {
 		log.Fatalf("cannot listen: %s", err)
 	}
+}
+
+func startGame(w http.ResponseWriter, r *http.Request) {
+	log.Printf("open connection")
+
+	// check auth
+
+	upgrader := websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+	}
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("cannot upgrade connection: %s", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	g.Connection <- conn
 }
 
 func leadersHandler(w http.ResponseWriter, r *http.Request) {
@@ -121,7 +149,7 @@ func leadersHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		sugar.Errorw("Failed get users",
 			"error", err,
-			"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -131,13 +159,12 @@ func leadersHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		sugar.Errorw("Failed set JSON",
 			"error", err,
-			"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-
 
 	w.Header().Set("Status-Code", "200")
 
@@ -145,15 +172,14 @@ func leadersHandler(w http.ResponseWriter, r *http.Request) {
 
 	return
 }
-
-func ValidUser(user *models.User) (bool) {
+func ValidUser(user *models.User) bool {
 	validEmail := govalidator.IsEmail(user.Email)
-	validPassword := govalidator.HasUpperCase(user.Password) && govalidator.HasLowerCase(user.Password) && govalidator.IsByteLength(user.Password, 6,12)
+	validPassword := govalidator.HasUpperCase(user.Password) && govalidator.HasLowerCase(user.Password) && govalidator.IsByteLength(user.Password, 6, 12)
 	validNick := !govalidator.HasWhitespace(user.Nick)
 	validName := govalidator.IsAlpha(user.Name) && !govalidator.HasWhitespace(user.Nick)
 	validLastName := govalidator.IsAlpha(user.LastName) && !govalidator.HasWhitespace(user.Nick)
 
-	if validEmail && validPassword && validNick && validName && validLastName{
+	if validEmail && validPassword && validNick && validName && validLastName {
 		return true
 	} else {
 		return false
@@ -174,7 +200,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		sugar.Errorw("Failed get JSON",
 			"error", err,
-			"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -195,7 +221,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				sugar.Errorw("Failed create USER",
 					"error", err,
-					"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+					"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -205,7 +231,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				sugar.Errorw("Failed create SESSION",
 					"error", err,
-					"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+					"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -236,7 +262,7 @@ func signinHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		sugar.Errorw("Failed get JSON",
 			"error", err,
-			"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -283,7 +309,7 @@ func profileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 	if err != nil || sess == nil {
 		sugar.Errorw("Failed get SESSION",
 			"error", err,
-			"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -302,7 +328,7 @@ func profileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 		if err != nil {
 			sugar.Errorw("Failed marshal json",
 				"error", err,
-				"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+				"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -317,7 +343,7 @@ func profileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 		if err := uploadFileReq(pId, r); err != nil {
 			sugar.Errorw("Failed put file",
 				"error", err,
-				"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+				"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -327,7 +353,7 @@ func profileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 		if err != nil || existUserData == nil {
 			sugar.Errorw("Failed get user",
 				"error", err,
-				"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+				"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -337,7 +363,7 @@ func profileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 		if err != nil {
 			sugar.Errorw("Failed get json",
 				"error", err,
-				"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+				"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -350,7 +376,7 @@ func profileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 			if err != nil {
 				sugar.Errorw("Failed update user",
 					"error", err,
-					"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+					"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
@@ -372,7 +398,7 @@ func profileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 func findSession(r *http.Request) (*models.UserSession, error) {
 	val := r.Cookies()
 
-	for i := 0; i < len(val); i++{
+	for i := 0; i < len(val); i++ {
 		//fmt.Println(val[i].Value)
 		sess, err := session.Get(redis, val[i].Value)
 
@@ -386,7 +412,6 @@ func findSession(r *http.Request) (*models.UserSession, error) {
 			return sess, nil
 		}
 
-
 	}
 	return nil, nil
 }
@@ -397,8 +422,8 @@ func islogged(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		sugar.Errorw("Failed find SESSION",
-				"error", err,
-				"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+			"error", err,
+			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
