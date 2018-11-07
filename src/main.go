@@ -188,12 +188,6 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 	validUser := ValidUser(user)
 
 	if validUser {
-		fmt.Println("ВАЛИД")
-	} else {
-		fmt.Println("НЕ ВАЛИД")
-	}
-
-	if validUser {
 		if existUser == nil {
 
 			err := postgres.CreateUser(user)

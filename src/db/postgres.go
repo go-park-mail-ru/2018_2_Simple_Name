@@ -81,13 +81,6 @@ func (s *PostgresUserService) UpdateUser(existData *models.User, newData *models
 func (s *PostgresUserService) GetUsersByScore(limit string, offset string) ([]*models.User, error) {
 	var users = make([]*models.User, 0)
 
-	//if limit == "" {
-	//	limit = "ALL"
-	//}
-	//if offset == "" {
-	//	limit = " 0"
-	//}
-
 	query := "SELECT nick, score FROM users ORDER BY score DESC LIMIT "+ limit + " OFFSET " + offset + ";"
 
 	rows, err := s.db.Query(query)
