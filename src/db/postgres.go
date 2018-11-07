@@ -1,7 +1,7 @@
 package db
 
 import (
-	"../models"
+	"SimpleGame/models"
 	"database/sql"
 	"fmt"
 
@@ -30,7 +30,6 @@ func (s *PostgresUserService) InitService() error {
 	return nil
 }
 
-
 func (s *PostgresUserService) GetUser(email string) (*models.User, error) {
 	user := new(models.User)
 
@@ -45,7 +44,7 @@ func (s *PostgresUserService) GetUser(email string) (*models.User, error) {
 
 	return user, nil
 }
-func (s *PostgresUserService) CreateUser(u *models.User) (error) {
+func (s *PostgresUserService) CreateUser(u *models.User) error {
 	query := "INSERT INTO users(email, name, last_name, age, nick, password) VALUES ($1,$2,$3,$4,$5,$6)"
 	_, err := s.db.Exec(query,
 		u.Email, u.Name, u.LastName, u.Age, u.Nick, u.Password)
@@ -56,7 +55,7 @@ func (s *PostgresUserService) CreateUser(u *models.User) (error) {
 
 	return nil
 }
-func (s *PostgresUserService) DeleteUser(email string) (error) {
+func (s *PostgresUserService) DeleteUser(email string) error {
 	query := "DELETE FROM users WHERE email=$1"
 	_, err := s.db.Exec(query, email)
 
@@ -66,7 +65,7 @@ func (s *PostgresUserService) DeleteUser(email string) (error) {
 
 	return nil
 }
-func (s *PostgresUserService) UpdateUser(existData *models.User, newData *models.User) (error) {
+func (s *PostgresUserService) UpdateUser(existData *models.User, newData *models.User) error {
 	query := "UPDATE users SET nick=$1, password=$2 WHERE email=$3"
 
 	_, err := s.db.Exec(query, newData.Nick, newData.Password, existData.Email)
@@ -81,7 +80,7 @@ func (s *PostgresUserService) UpdateUser(existData *models.User, newData *models
 func (s *PostgresUserService) GetUsersByScore(limit string, offset string) ([]*models.User, error) {
 	var users = make([]*models.User, 0)
 
-	query := "SELECT nick, score FROM users ORDER BY score DESC LIMIT "+ limit + " OFFSET " + offset + ";"
+	query := "SELECT nick, score FROM users ORDER BY score DESC LIMIT " + limit + " OFFSET " + offset + ";"
 
 	rows, err := s.db.Query(query)
 
@@ -89,7 +88,7 @@ func (s *PostgresUserService) GetUsersByScore(limit string, offset string) ([]*m
 		return nil, err
 	}
 
-	for rows.Next(){
+	for rows.Next() {
 		user := new(models.User)
 
 		err := rows.Scan(&user.Nick, &user.Score)
@@ -103,5 +102,4 @@ func (s *PostgresUserService) GetUsersByScore(limit string, offset string) ([]*m
 
 	return users, nil
 
-	}
-
+}

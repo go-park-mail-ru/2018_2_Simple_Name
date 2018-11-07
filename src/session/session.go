@@ -1,19 +1,20 @@
 package session
 
 import (
-	"../models"
-	"SimpleGame/2018_2_Simple_Name/src/generator"
+	"SimpleGame/generator"
+	"SimpleGame/models"
 	"fmt"
-	"github.com/gomodule/redigo/redis"
 	"net/http"
 	"time"
+
+	"github.com/gomodule/redigo/redis"
 )
 
-func Create(service models.UserSessionService, user *models.User, w *http.ResponseWriter) (error) {
+func Create(service models.UserSessionService, user *models.User, w *http.ResponseWriter) error {
 	sess := new(http.Cookie)
 	sess.Name = "session_id"
 	sess.Value = generator.UidGen()
-	sess.Expires = time.Now().Add(time.Minute*5)
+	sess.Expires = time.Now().Add(time.Minute * 5)
 
 	sess.HttpOnly = true
 	//sess.Secure = true
