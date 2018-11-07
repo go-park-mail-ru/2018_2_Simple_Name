@@ -101,28 +101,44 @@ func main() {
 }
 
 func leadersHandler(w http.ResponseWriter, r *http.Request) {
+	limit := r.URL.Query().Get("limit")
+	offset := r.URL.Query().Get("offset")
 
-	Leaders := map[int]models.User{
-		0: models.User{
-			Nick:  "GRe12",
-			Score: 4321,
-			Age:   12,
-		},
-		1: models.User{
-			Nick:  "wasaW2",
-			Score: 43121,
-			Age:   13,
-		},
-		2: models.User{
-			Nick:  "Feesfs",
-			Score: 432441,
-			Age:   77,
-		},
+	_, err := strconv.Atoi(limit)
+
+	if err != nil {
+		limit = "ALL"
+	}
+
+	_, err = strconv.Atoi(offset)
+
+	if err != nil {
+		offset = "0"
+	}
+
+	top, err := postgres.GetUsersByScore(limit, offset)
+
+	if err != nil {
+		sugar.Errorw("Failed get users",
+			"error", err,
+			"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	resp, err := json.Marshal(top)
+
+	if err != nil {
+		sugar.Errorw("Failed set JSON",
+			"error", err,
+			"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 
-	resp, _ := json.Marshal(Leaders)
+
 	w.Header().Set("Status-Code", "200")
 
 	w.Write(resp)
@@ -344,6 +360,9 @@ func profileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
+
+			w.WriteHeader(http.StatusOK)
+			return
 
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
