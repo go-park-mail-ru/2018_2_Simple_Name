@@ -1,8 +1,7 @@
 package game
 
 import (
-	"encoding/json"
-	"log"
+	"sync"
 	"time"
 
 	uuid "github.com/satori/go.uuid"
@@ -15,51 +14,110 @@ type Room struct {
 	MaxPlayers int
 	Register   chan *Player
 	Unregister chan *Player
-	Message    chan *IncomingMessage
+	Message    chan *PrivateMessage
 	Broadcast  chan *Message
-	Commands   []*Command
+	Command    chan *Command
 }
+
 type Command struct {
-	Player  *Player
-	Command string
+	Nickname string
+	Command  string
+	Pos      Position
+	Type     string
 }
-type State struct {
-	Players []PlayerData `json:"players"`
-}
-type NewPlayer struct {
-	Username string `json:"username"`
-}
+
+const (
+	CommandAddMob  string = "addmob"
+	CommandKillMob string = "killmob"
+)
+
+type GameState map[string]PlayerState
 
 func NewRoom() *Room {
 	id := uuid.NewV4().String()
-
 	return &Room{
 		ID:         id,
 		MaxPlayers: 2,
 		Players:    make(map[string]*Player),
 		Register:   make(chan *Player),
 		Unregister: make(chan *Player),
+		Message:    make(chan *PrivateMessage),
 		Broadcast:  make(chan *Message),
-		Message:    make(chan *IncomingMessage),
 	}
 }
-func (r *Room) ListenToPlayers() {
+
+func (r *Room) RoomManager() {
 	for {
 		select {
-		case m := <-r.Message:
-			log.Printf("message from player %s: %v", m.Player.ID, string(m.Payload))
-
-			switch m.Type {
-			case "newPlayer":
-				np := &NewPlayer{}
-				json.Unmarshal(m.Payload, np)
-				m.Player.Data.Username = np.Username
+		case m := <-r.Broadcast:
+			for _, p := range r.Players {
+				p.Send(m)
 			}
+		case m := <-r.Message:
+			m.Player.Send(m.Msg)
+
+		case p := <-r.Register:
+			mu := &sync.Mutex{}
+
+			mu.Lock()
+			r.Players[p.Nickname] = p
+			mu.Unlock()
+			r.Broadcast <- &Message{Type: MsgInfo, Data: InfoData{Status: StatusWait, Room: r.ID, Msg: "User " + p.Nickname + " entered to room"}}
 
 		case p := <-r.Unregister:
-			delete(r.Players, p.ID)
-			log.Printf("player was deleted from room %s", r.ID)
+			delete(r.Players, p.Nickname)
+			r.Broadcast <- &Message{Type: MsgInfo, Data: InfoData{Status: StatusWait, Room: r.ID, Msg: "User " + p.Nickname + " deleted from room"}}
+		case c := <-r.Command:
+			r.PerformCommand(c)
 		}
 
 	}
+}
+
+func (r *Room) Run() {
+	r.Broadcast <- &Message{Type: MsgInfo, Data: InfoData{Status: StatusStartGame, Room: r.ID, Msg: "Starting of Room"}}
+	r.Ticker = time.NewTicker(time.Second)
+	r.GameState("init")
+	for {
+		<-r.Ticker.C
+		gameState, end := r.GameState("next")
+
+		r.Broadcast <- &Message{Type: MsgGameState, Data: gameState}
+		if end {
+			break
+		}
+	}
+	r.Ticker.Stop()
+	r.Broadcast <- &Message{Type: MsgInfo, Data: InfoData{Status: StatusEndGame, Room: r.ID, Msg: "Room Stop"}}
+	r.Stop()
+}
+
+func (r *Room) Stop() {
+}
+
+func (r *Room) GameState(key string) (GameState, bool) {
+	gameState := GameState{}
+	for _, p := range r.Players {
+		switch key {
+		case "init":
+			p.InitPlayerState()
+		case "next":
+			p.NextPlayerState()
+		}
+		gameState[p.Nickname] = p.Data
+	}
+
+	endflag := false
+	if key == "next" {
+		endflag = r.ProcessGameState()
+	}
+	return gameState, endflag
+}
+
+func (r *Room) ProcessGameState() bool {
+	return false
+}
+
+func (r *Room) PerformCommand(c *Command) {
+
 }

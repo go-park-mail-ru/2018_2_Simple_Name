@@ -108,24 +108,19 @@ func main() {
 }
 
 func startGame(w http.ResponseWriter, r *http.Request) {
-	log.Printf("open connection")
 
-	// check auth
-
-	upgrader := websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool {
-			return true
-		},
-	}
+	upgrader := websocket.Upgrader{}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("cannot upgrade connection: %s", err)
+		sugar.Errorw("Cannot upgrade connection", "Error:",err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	g.Connection <- conn
+	nickname:="nick"///////////////////fix it
+
+	g.Connection <- &game.Player{Conn:conn,Nickname:nickname}
 }
 
 func leadersHandler(w http.ResponseWriter, r *http.Request) {

@@ -1,35 +1,20 @@
 package game
 
 import (
-	"encoding/json"
-	"log"
-
-	"github.com/gorilla/websocket"
-	uuid "github.com/satori/go.uuid"
+	"sync"
 )
 
 type Game struct {
 	Rooms      map[string]*Room
 	MaxRooms   int
-	Connection chan *websocket.Conn
-}
-
-type IncomingMessage struct {
-	Type    string          `json:"type"`
-	Payload json.RawMessage `json:"payload"`
-	Player  *Player         `json:"-"`
-}
-
-type Message struct {
-	Type    string      `json:"type"`
-	Payload interface{} `json:"payload"`
+	Connection chan *Player
 }
 
 func NewGame() *Game {
 	return &Game{
 		Rooms:      make(map[string]*Room),
-		MaxRooms:   2,
-		Connection: make(chan *websocket.Conn),
+		MaxRooms:   10,
+		Connection: make(chan *Player),
 	}
 }
 
@@ -40,26 +25,22 @@ func (g *Game) Run() {
 	}
 }
 
-func (g *Game) ProcessConn(conn *websocket.Conn) {
-	id := uuid.NewV4().String()
-	p := &Player{
-		Conn: conn,
-		ID:   id,
-	}
+func (g *Game) ProcessConn(p *Player) {
 
 	r := g.FindRoom()
 	if r == nil {
+		p.Conn.WriteJSON(Message{Type: MsgError, Data: ErrorData{Error: "All rooms are busy"}})
+		p.Conn.Close()
 		return
 	}
-	r.Players[p.ID] = p
 	p.Room = r
-	log.Printf("player %s joined room %s", p.ID, r.ID)
-	go p.Listen()
+	r.Register <- p
 
 	if len(r.Players) == r.MaxPlayers {
 		go r.Run()
+	} else {
+		r.Broadcast <- &Message{Type: MsgInfo, Data: InfoData{Status: StatusWait, Room: r.ID}}
 	}
-
 }
 
 func (g *Game) FindRoom() *Room {
@@ -73,9 +54,12 @@ func (g *Game) FindRoom() *Room {
 		return nil
 	}
 	r := NewRoom()
-	go r.ListenToPlayers()
+	go r.RoomManager()
+
+	mu := &sync.Mutex{}
+	mu.Lock()
 	g.Rooms[r.ID] = r
-	log.Printf("room %s created", r.ID)
+	mu.Unlock()
 
 	return r
 }
