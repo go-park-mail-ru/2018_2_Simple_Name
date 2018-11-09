@@ -74,7 +74,7 @@ func main() {
 	defer logger.Sync()
 
 	postgres.InitService()
-	obj, err := redis.InitService()
+	_, err := redis.InitService()
 
 	if err != nil {
 		//logging.ErrorLog("Failed open redis", err, sugar)
@@ -85,7 +85,7 @@ func main() {
 		return
 	}
 
-	defer obj.Close() // Не будет работать
+	//defer obj.Close() // Не будет работать
 
 	go g.Run()
 
@@ -95,6 +95,7 @@ func main() {
 	siteMux.HandleFunc("/profile", CORSsettings(profileHandler))
 	siteMux.HandleFunc("/leaders", CORSsettings(leadersHandler))
 	siteMux.HandleFunc("/islogged", CORSsettings(islogged))
+	siteMux.HandleFunc("/logout", CORSsettings(logOut))
 	siteMux.HandleFunc("/startgame", CORSsettings(startGame))
 
 	siteHandler := logging.AccessLogMiddleware(siteMux, sugar)
@@ -169,7 +170,7 @@ func leadersHandler(w http.ResponseWriter, r *http.Request) {
 }
 func ValidUser(user *models.User) bool {
 	validEmail := govalidator.IsEmail(user.Email)
-	validPassword := govalidator.HasUpperCase(user.Password) && govalidator.HasLowerCase(user.Password) && govalidator.IsByteLength(user.Password, 6, 12)
+	validPassword := govalidator.HasUpperCase(user.Password) && govalidator.HasLowerCase(user.Password) //&& govalidator.IsByteLength(user.Password, 6, 12)
 	validNick := !govalidator.HasWhitespace(user.Nick)
 	validName := govalidator.IsAlpha(user.Name) && !govalidator.HasWhitespace(user.Nick)
 	validLastName := govalidator.IsAlpha(user.LastName) && !govalidator.HasWhitespace(user.Nick)
@@ -238,7 +239,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 }
@@ -301,11 +302,16 @@ func profileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 
 	sess, err := findSession(r)
 
-	if err != nil || sess == nil {
+	if err != nil{
 		sugar.Errorw("Failed get SESSION",
 			"error", err,
 			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
 		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if sess == nil {
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
@@ -426,10 +432,10 @@ func islogged(w http.ResponseWriter, r *http.Request) {
 	if sess != nil {
 		w.WriteHeader(http.StatusOK)
 		return
-	} else {
-		w.WriteHeader(http.StatusBadRequest)
-		return
 	}
+
+	w.WriteHeader(http.StatusUnauthorized)
+	return
 
 	//val := r.Cookies()
 	//
@@ -452,7 +458,36 @@ func islogged(w http.ResponseWriter, r *http.Request) {
 	//	}
 	//
 	//}
-	w.WriteHeader(http.StatusBadRequest)
+}
+
+
+func logOut(w http.ResponseWriter, r *http.Request) {
+	sess, err := findSession(r)
+
+	if err != nil {
+		sugar.Errorw("Failed find SESSION",
+			"error", err,
+			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if sess == nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	_, err = session.Delete(redis, sess.Id, &w)
+
+	if err != nil {
+		sugar.Errorw("Failed delete SESSION",
+			"error", err,
+			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 	return
 }
 

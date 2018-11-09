@@ -13,7 +13,7 @@ func Create(service models.UserSessionService, user *models.User, w *http.Respon
 	sess := new(http.Cookie)
 	sess.Name = "session_id"
 	sess.Value = generator.UidGen()
-	sess.Expires = time.Now().Add(time.Minute*5)
+	sess.Expires = time.Now().Add(time.Hour*5)
 
 	sess.HttpOnly = true
 	//sess.Secure = true
@@ -31,9 +31,22 @@ func Create(service models.UserSessionService, user *models.User, w *http.Respon
 	return nil
 }
 
-//func Delete(service *models.UserSessionService, user *models.User) (error) {
-//	return nil
-//}
+func Delete(service models.UserSessionService, sessionId string, w *http.ResponseWriter) (string, error) {
+	sess := new(http.Cookie)
+	sess.Name = "session_id"
+	sess.Value = sessionId
+	sess.Expires = time.Now()
+	sess.HttpOnly = true
+
+	http.SetCookie(*w, sess)
+
+	err := service.Delete(sessionId)
+	if err != nil {
+		return "", err
+	}
+
+	return "", nil
+}
 
 func Get(service models.UserSessionService, sessionId string) (*models.UserSession, error) {
 	uSession := new(models.UserSession)

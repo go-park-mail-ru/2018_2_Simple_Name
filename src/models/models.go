@@ -32,7 +32,7 @@ type UserSessionService interface {
 	InitService() (redis.Conn, error)
 	Create(key string, value string) (error)
 	Get(key string) (string, error)
-//	Delete(user *User) (error)
+	Delete(key string) (error)
 }
 
 //type UserSessionService interface {

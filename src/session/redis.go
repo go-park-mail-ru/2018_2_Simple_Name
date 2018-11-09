@@ -53,6 +53,20 @@ func (r *RedisSessionService) Get(key string) (string, error){
 
 }
 
+func (r *RedisSessionService) Delete(key string) (error){
+	_, err := r.Conn.Do("DEL", key)
+	//item, err := redis.String(data, err)
+
+	if err != nil {
+		return err
+	}
+
+	//defer r.Conn.Close()
+
+	return nil
+
+}
+
 //func (r *RedisSessionService) Delete(user *models.User) (error) {
 //
 //	_, err := r.Conn.Do("DEL", key)
