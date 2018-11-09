@@ -18,6 +18,10 @@ type UserSession struct {
 	Email string
 }
 
+type DBinfo struct {
+	LeadersCount int `json:"leaderscount"`
+}
+
 type UserService interface {
 	InitService() (error)
 	GetUser(email string) (*User, error)
@@ -25,6 +29,7 @@ type UserService interface {
 	UpdateUser(existData *User, newData *User) error
 	DeleteUser(email string) error
 	GetUsersByScore(limit string, offset string) ([]*User, error)
+	GetLeadersCount(limit string) (int, error)
 }
 
 

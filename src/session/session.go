@@ -15,7 +15,7 @@ func Create(service models.UserSessionService, user *models.User, w *http.Respon
 	sess.Value = generator.UidGen()
 	sess.Expires = time.Now().Add(time.Hour*5)
 
-	sess.HttpOnly = true
+	//sess.HttpOnly = true
 	//sess.Secure = true
 
 	http.SetCookie(*w, sess)

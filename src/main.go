@@ -97,6 +97,8 @@ func main() {
 	siteMux.HandleFunc("/islogged", CORSsettings(islogged))
 	siteMux.HandleFunc("/logout", CORSsettings(logOut))
 	siteMux.HandleFunc("/startgame", CORSsettings(startGame))
+	siteMux.HandleFunc("/leaderscount", CORSsettings(leadersCount))
+	siteMux.HandleFunc("/getAvatar", CORSsettings(getAvatar))
 
 	siteHandler := logging.AccessLogMiddleware(siteMux, sugar)
 
@@ -107,6 +109,8 @@ func main() {
 		log.Fatalf("cannot listen: %s", err)
 	}
 }
+
+
 
 func startGame(w http.ResponseWriter, r *http.Request) {
 
@@ -122,6 +126,41 @@ func startGame(w http.ResponseWriter, r *http.Request) {
 	nickname:="nick"///////////////////fix it
 
 	g.Connection <- &game.Player{Conn:conn,Nickname:nickname}
+}
+
+func leadersCount(w http.ResponseWriter, r *http.Request)  {
+	limit := "50" // Общий лимит на показ лидеров
+	count, err := postgres.GetLeadersCount(limit)
+
+	if err != nil {
+		sugar.Errorw("Failed get count leaders",
+			"error", err,
+			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	info := models.DBinfo{}
+
+	info.LeadersCount = count
+
+	if err != nil {
+		sugar.Errorw("Failed set json",
+			"error", err,
+			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resp, _ := json.Marshal(info)
+
+	w.Header().Set("Content-Type", "application/json")
+
+	w.Header().Set("Status-Code", "200")
+
+	w.Write(resp)
+
+	return
 }
 
 func leadersHandler(w http.ResponseWriter, r *http.Request) {
@@ -290,6 +329,61 @@ func signinHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+}
+
+func getAvatar(w http.ResponseWriter, r *http.Request)  {
+	sess, err := findSession(r)
+
+	if err != nil{
+		sugar.Errorw("Failed get SESSION",
+			"error", err,
+			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if sess == nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	fmt.Println(sess.Email)
+	fmt.Println(sess.Email)
+	fmt.Println(sess.Email)
+	fmt.Println(sess.Email)
+	fmt.Println(sess.Email)
+	fmt.Println(sess.Email)
+	file, err := os.Open("./media/"+sess.Email)
+
+	//res, _ := ioutil.ReadAll(file)
+
+	defer file.Close()
+
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+
+	FileHeader := make([]byte, 512)
+	//Copy the headers into the FileHeader buffer
+	file.Read(FileHeader)
+	//Get content type of file
+	FileContentType := http.DetectContentType(FileHeader)
+
+	//Get the file size
+	FileStat, _ := file.Stat()                     //Get info from file
+	FileSize := strconv.FormatInt(FileStat.Size(), 10) //Get file size as a string
+
+	//Send the headers
+	w.Header().Set("Content-Disposition", "attachment; filename="+sess.Email)
+	w.Header().Set("Content-Type", FileContentType)
+	w.Header().Set("Content-Length", FileSize)
+
+	//Send the file
+	//We read 512 bytes from the file already, so we reset the offset back to 0
+	file.Seek(0, 0)
+	io.Copy(w, file) //'Copy' the file to the client
+	return
 }
 
 func profileHandler(w http.ResponseWriter, r *http.Request) { // Валидировать данные
@@ -534,7 +628,7 @@ func uploadFileReq(fileName string, r *http.Request) error {
 	}
 	defer file.Close()
 
-	dst, err1 := os.Create(filepath.Join("../src/static/media", fileName))
+	dst, err1 := os.Create(filepath.Join("/media", fileName))
 
 	if err1 != nil {
 		return err

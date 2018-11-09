@@ -103,5 +103,22 @@ func (s *PostgresUserService) GetUsersByScore(limit string, offset string) ([]*m
 
 	return users, nil
 
+}
+
+func (s *PostgresUserService) GetLeadersCount(limit string) (int, error) {
+	query := "SELECT COUNT(*) FROM (SELECT * FROM users ORDER BY score LIMIT "+ limit + ") as foo;"
+
+	row := s.db.QueryRow(query)
+
+	var count int
+
+	err := row.Scan(&count)
+
+	if err != nil {
+		return -1, err
 	}
+
+	return count, nil
+
+}
 
