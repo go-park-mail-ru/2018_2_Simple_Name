@@ -2,11 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="ae8d3d98-776d-4ad4-aea3-9a07878ae413" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/models/models.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/models.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/session/redis.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/session/redis.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/session/session.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/session/session.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -66,13 +62,13 @@
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
           <entry key="gitignore" value="2" />
-          <entry key="go" value="9922" />
+          <entry key="go" value="9992" />
           <entry key="sql" value="341" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
         <counts>
-          <entry key="Go" value="9922" />
+          <entry key="Go" value="9992" />
           <entry key="PLAIN_TEXT" value="2" />
           <entry key="SQL" value="341" />
         </counts>
@@ -102,8 +98,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="490">
-              <caret line="409" column="24" lean-forward="true" selection-start-line="409" selection-start-column="24" selection-end-line="409" selection-end-column="24" />
+            <state relative-caret-position="414">
+              <caret line="477" column="5" lean-forward="true" selection-start-line="477" selection-start-column="5" selection-end-line="477" selection-end-column="5" />
               <folding>
                 <element signature="e#14#344#0" expanded="true" />
               </folding>
@@ -216,10 +212,10 @@
         <option value="$PROJECT_DIR$/src/logger/accessLogOut.go" />
         <option value="$PROJECT_DIR$/src/logging/accessLogOut.go" />
         <option value="$PROJECT_DIR$/src/db/postgres.go" />
-        <option value="$PROJECT_DIR$/src/main.go" />
         <option value="$PROJECT_DIR$/src/session/redis.go" />
         <option value="$PROJECT_DIR$/src/models/models.go" />
         <option value="$PROJECT_DIR$/src/session/session.go" />
+        <option value="$PROJECT_DIR$/src/main.go" />
       </list>
     </option>
   </component>
@@ -463,8 +459,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="490">
-          <caret line="409" column="24" lean-forward="true" selection-start-line="409" selection-start-column="24" selection-end-line="409" selection-end-column="24" />
+        <state relative-caret-position="414">
+          <caret line="477" column="5" lean-forward="true" selection-start-line="477" selection-start-column="5" selection-end-line="477" selection-end-column="5" />
           <folding>
             <element signature="e#14#344#0" expanded="true" />
           </folding>

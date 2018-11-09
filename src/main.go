@@ -401,19 +401,19 @@ func findSession(r *http.Request) (*models.UserSession, error) {
 
 	for i := 0; i < len(val); i++ {
 		//fmt.Println(val[i].Value)
-		sess, err := session.Get(redis, val[i].Value)
+		if val[i].Name == "session_id" {
+			sess, err := session.Get(redis, val[i].Value)
 
-		if err != nil {
-			return nil, err
-		}
-
-		if sess == nil {
-			continue
-		} else {
+			if err != nil {
+				return nil, err
+			}
 			return sess, nil
-		}
 
+		} else {
+			continue
+		}
 	}
+
 	return nil, nil
 }
 
