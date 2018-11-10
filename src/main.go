@@ -105,7 +105,7 @@ func main() {
 	sugar.Infow("starting server at :8080")
 
 	//fmt.Println("starting server at :8080")
-	if err := http.ListenAndServe(":8080", siteHandler); err != nil {
+	if err := http.ListenAndServe(":80", siteHandler); err != nil {
 		log.Fatalf("cannot listen: %s", err)
 	}
 }
