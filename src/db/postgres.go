@@ -66,16 +66,20 @@ func (s *PostgresUserService) DeleteUser(email string) (error) {
 
 	return nil
 }
-func (s *PostgresUserService) UpdateUser(existData *models.User, newData *models.User) (error) {
-	query := "UPDATE users SET password=$2 WHERE email=$3"
+func (s *PostgresUserService) UpdateUser(existData *models.User, newData *models.User) (*models.User, error) {
+	query := "UPDATE users SET password=$1 WHERE email=$2 RETURNING *"
 
-	_, err := s.db.Exec(query, newData.Password, existData.Email)
+	row := s.db.QueryRow(query, newData.Password, existData.Email)
+
+	user := new(models.User)
+
+	err := row.Scan(&user.Email, &user.Name, &user.LastName, &user.Age, &user.Nick, &user.Password, &user.Score)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return user, nil
 }
 
 func (s *PostgresUserService) GetUsersByScore(limit string, offset string) ([]*models.User, error) {

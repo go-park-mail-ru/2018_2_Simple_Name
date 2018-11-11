@@ -327,7 +327,7 @@ func signinHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	
+
 	if existUser.Password == user.Password {
 
 		session.Create(redis, user, &w)
@@ -439,17 +439,14 @@ func profileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 		return
 	} else if r.Method == http.MethodPut {
 
-		if err := uploadFileReq(sess.Email, r); err != nil {
-			sugar.Errorw("Failed put file",
-				"error", err,
-				"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
-			w.WriteHeader(http.StatusInternalServerError)
+		existUserData, err := postgres.GetUser(sess.Email)
+
+		if existUserData == nil {
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		existUserData, err := postgres.GetUser(sess.Email)
-
-		if err != nil || existUserData == nil {
+		if err != nil {
 			sugar.Errorw("Failed get user",
 				"error", err,
 				"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
@@ -467,10 +464,10 @@ func profileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 			return
 		}
 
-		validData := ValidUser(newUserData)
+		validData := govalidator.HasUpperCase(newUserData.Password) && govalidator.HasLowerCase(newUserData.Password)
 
 		if validData {
-			err := postgres.UpdateUser(existUserData, newUserData)
+			user, err := postgres.UpdateUser(existUserData, newUserData)
 
 			if err != nil {
 				sugar.Errorw("Failed update user",
@@ -480,6 +477,10 @@ func profileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 				return
 			}
 
+			resp, _ := json.Marshal(user)
+
+			w.Write(resp)
+
 			w.WriteHeader(http.StatusOK)
 			return
 
@@ -487,6 +488,17 @@ func profileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
+	} else if r.Method == http.MethodPost {
+		if err := uploadFileReq(sess.Email, r); err != nil {
+			sugar.Errorw("Failed put file",
+				"error", err,
+				"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		return
 	}
 
 	w.WriteHeader(http.StatusMethodNotAllowed)
@@ -623,19 +635,34 @@ func getFormReq(r *http.Request) (*models.User, error) {
 
 func uploadFileReq(fileName string, r *http.Request) error {
 	if err := r.ParseMultipartForm(32 << 20); nil != err {
+		fmt.Println("3")
+
 		return err
 	}
 
-	file, _, err := r.FormFile("newavatar")
+	tt, err := ioutil.ReadAll(r.Body)
+	defer r.Body.Close()
+
+	fmt.Println()
+	fmt.Println(tt)
+	fmt.Println()
+
+	file, _, err := r.FormFile("new_avatar")
 
 	if err != nil {
+		fmt.Println("1")
 		return err
 	}
 	defer file.Close()
 
-	dst, err1 := os.Create(filepath.Join("/media", fileName))
+	fmt.Println(fileName)
+	fmt.Println(filepath.Join(("/media")))
 
-	if err1 != nil {
+	dst, err := os.Create(filepath.Join("./media", fileName))
+
+	if err != nil {
+		fmt.Println("2")
+
 		return err
 	}
 
