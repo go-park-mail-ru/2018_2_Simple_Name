@@ -73,8 +73,16 @@ func main() {
 
 	defer logger.Sync()
 
-	postgres.InitService()
-	_, err := redis.InitService()
+	err := postgres.InitService()
+
+	if err != nil {
+		sugar.Errorw("Failed connect to the database",
+			"error", err,
+			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
+		return
+	}
+
+	_, err = redis.InitService()
 
 	if err != nil {
 		//logging.ErrorLog("Failed open redis", err, sugar)

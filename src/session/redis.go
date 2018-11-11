@@ -18,7 +18,7 @@ func (r *RedisSessionService) InitService() (redis.Conn, error) {
 		fmt.Println("Error in start Redis")
 		return nil, err
 	}
-	//defer r.conn.Close()
+	//defer r.Conn.Close()
 	fmt.Println("Redis start in port: ", port)
 	return r.Conn, nil
 }
