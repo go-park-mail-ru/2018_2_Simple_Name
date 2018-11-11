@@ -313,21 +313,21 @@ func signinHandler(w http.ResponseWriter, r *http.Request) {
 
 	existUser, err := postgres.GetUser(user.Email)
 
+
 	if existUser == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
 	if err != nil { // Проверка, что ошибка НЕ no rows in result set
+
 		sugar.Errorw("Failed get USER",
 			"error", err,
 			"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
-
-
+	
 	if existUser.Password == user.Password {
 
 		session.Create(redis, user, &w)

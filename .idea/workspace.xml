@@ -2,8 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="ae8d3d98-776d-4ad4-aea3-9a07878ae413" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/db/postgres.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/db/postgres.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/dump.rdb" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -65,13 +64,13 @@
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
           <entry key="gitignore" value="2" />
-          <entry key="go" value="10801" />
+          <entry key="go" value="10855" />
           <entry key="sql" value="341" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
         <counts>
-          <entry key="Go" value="10801" />
+          <entry key="Go" value="10855" />
           <entry key="PLAIN_TEXT" value="2" />
           <entry key="SQL" value="341" />
         </counts>
@@ -101,8 +100,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="190">
-              <caret line="298" column="19" lean-forward="true" selection-start-line="298" selection-start-column="19" selection-end-line="298" selection-end-column="19" />
+            <state relative-caret-position="-5240">
+              <caret line="329" column="4" selection-start-line="329" selection-start-column="4" selection-end-line="329" selection-end-column="4" />
               <folding>
                 <element signature="e#14#344#0" expanded="true" />
               </folding>
@@ -473,8 +472,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="190">
-          <caret line="298" column="19" lean-forward="true" selection-start-line="298" selection-start-column="19" selection-end-line="298" selection-end-column="19" />
+        <state relative-caret-position="-5240">
+          <caret line="329" column="4" selection-start-line="329" selection-start-column="4" selection-end-line="329" selection-end-column="4" />
           <folding>
             <element signature="e#14#344#0" expanded="true" />
           </folding>
