@@ -67,9 +67,9 @@ func (s *PostgresUserService) DeleteUser(email string) (error) {
 	return nil
 }
 func (s *PostgresUserService) UpdateUser(existData *models.User, newData *models.User) (error) {
-	query := "UPDATE users SET nick=$1, password=$2 WHERE email=$3"
+	query := "UPDATE users SET password=$2 WHERE email=$3"
 
-	_, err := s.db.Exec(query, newData.Nick, newData.Password, existData.Email)
+	_, err := s.db.Exec(query, newData.Password, existData.Email)
 
 	if err != nil {
 		return err

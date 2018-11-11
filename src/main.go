@@ -102,10 +102,12 @@ func main() {
 
 	siteHandler := logging.AccessLogMiddleware(siteMux, sugar)
 
-	sugar.Infow("starting server at :8080")
+	port := "8080"
+
+	sugar.Infow("starting server at :"+port)
 
 	//fmt.Println("starting server at :8080")
-	if err := http.ListenAndServe(":8080", siteHandler); err != nil {
+	if err := http.ListenAndServe(":"+port, siteHandler); err != nil {
 		log.Fatalf("cannot listen: %s", err)
 	}
 }
@@ -311,13 +313,20 @@ func signinHandler(w http.ResponseWriter, r *http.Request) {
 
 	existUser, err := postgres.GetUser(user.Email)
 
-	//if err != nil || existUser == nil {
-	//	sugar.Errorw("Failed get USER",
-	//		"error", err,
-	//		"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
-	//	w.WriteHeader(http.StatusInternalServerError)
-	//	return
-	//}
+	if existUser == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	if err != nil { // Проверка, что ошибка НЕ no rows in result set
+		sugar.Errorw("Failed get USER",
+			"error", err,
+			"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+
 
 	if existUser.Password == user.Password {
 
@@ -346,12 +355,7 @@ func getAvatar(w http.ResponseWriter, r *http.Request)  {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	fmt.Println(sess.Email)
-	fmt.Println(sess.Email)
-	fmt.Println(sess.Email)
-	fmt.Println(sess.Email)
-	fmt.Println(sess.Email)
-	fmt.Println(sess.Email)
+
 	file, err := os.Open("./media/"+sess.Email)
 
 	//res, _ := ioutil.ReadAll(file)
@@ -435,7 +439,7 @@ func profileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 		return
 	} else if r.Method == http.MethodPut {
 
-		if err := uploadFileReq(pId, r); err != nil {
+		if err := uploadFileReq(sess.Email, r); err != nil {
 			sugar.Errorw("Failed put file",
 				"error", err,
 				"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
@@ -622,9 +626,10 @@ func uploadFileReq(fileName string, r *http.Request) error {
 		return err
 	}
 
-	file, _, err := r.FormFile("my_file")
+	file, _, err := r.FormFile("newavatar")
+
 	if err != nil {
-		return nil
+		return err
 	}
 	defer file.Close()
 
