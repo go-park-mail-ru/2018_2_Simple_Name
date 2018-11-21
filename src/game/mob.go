@@ -6,12 +6,13 @@ type Position struct {
 }
 
 type Mob struct {
-	ID    int
-	Type  string
-	HP    int
-	Pos   Position
-	Speed int
-	Area  int
+	ID     int      `json:"id"`
+	Type   string   `json:"type"`
+	HP     int      `json:"hp"`
+	Pos    Position `json:"pos"`
+	Speed  int      `json:"speed"`
+	Area   int      `json:"-"`
+	IsDead bool     `json:"isdead"`
 }
 
 func CreateSimpleMob() Mob {

@@ -5,29 +5,29 @@ import (
 )
 
 type PlayerState struct {
-	HP   int         `json:"hp"`
-	Mobs map[int]Mob `json:"position"`
+	Nickname string      `json:"nickname"`
+	HP       int         `json:"hp"`
+	Mobs     map[int]Mob `json:"mobs"`
 }
 
 type Player struct {
-	Nickname string
-	Room     *Room
-	Conn     *websocket.Conn
-	Data     PlayerState
+	Room  *Room
+	Conn  *websocket.Conn
+	State PlayerState
 }
 
 func (p *Player) Listen() {
 
 	for {
-		c := &Command{}
+		msg := &IncommingMessage{}
 
-		err := p.Conn.ReadJSON(c)
+		err := p.Conn.ReadJSON(msg)
 		if websocket.IsUnexpectedCloseError(err) {
 			p.Room.Unregister <- p
 			p.Conn.Close()
 			return
 		}
-		p.Room.Command <- c
+		p.Room.InCommand <- &IncommingCommand{InMsg: *msg, Nickname: p.State.Nickname}
 	}
 }
 
@@ -41,12 +41,12 @@ func (p *Player) Send(msg *Message) {
 }
 
 func (p *Player) InitPlayerState() {
-	p.Data.HP = 100
+	p.State.HP = 100
 	//Add some mob to start
 }
 
 func (p *Player) NextPlayerState() {
-	for _, mob := range p.Data.Mobs {
+	for _, mob := range p.State.Mobs {
 		mob.NextMobState()
 	}
 }

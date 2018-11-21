@@ -16,14 +16,12 @@ type Room struct {
 	Unregister chan *Player
 	Message    chan *PrivateMessage
 	Broadcast  chan *Message
-	Command    chan *Command
+	InCommand  chan *IncommingCommand
 }
 
-type Command struct {
+type IncommingCommand struct {
 	Nickname string
-	Command  string
-	Pos      Position
-	Type     string
+	InMsg    IncommingMessage
 }
 
 const (
@@ -51,6 +49,16 @@ func (r *Room) RoomManager() {
 		select {
 		case m := <-r.Broadcast:
 			for _, p := range r.Players {
+				if m.Status == StatusStartGame || m.Status == StatusGame || m.Status == StatusEndGame {
+					m.OwnState = p.State
+					RState := PlayerState{}
+					for _, templ := range r.Players {
+						if templ != p {
+							RState = templ.State
+						}
+					}
+					m.RivalState = RState
+				}
 				p.Send(m)
 			}
 		case m := <-r.Message:
@@ -60,14 +68,15 @@ func (r *Room) RoomManager() {
 			mu := &sync.Mutex{}
 
 			mu.Lock()
-			r.Players[p.Nickname] = p
+			r.Players[p.State.Nickname] = p
 			mu.Unlock()
-			r.Broadcast <- &Message{Type: MsgInfo, Data: InfoData{Status: StatusWait, Room: r.ID, Msg: "User " + p.Nickname + " entered to room"}}
+			r.Broadcast <- &Message{Status: StatusInfo, Room: r.ID, Info: "User " + p.State.Nickname + " entered to room"}
 
 		case p := <-r.Unregister:
-			delete(r.Players, p.Nickname)
-			r.Broadcast <- &Message{Type: MsgInfo, Data: InfoData{Status: StatusWait, Room: r.ID, Msg: "User " + p.Nickname + " deleted from room"}}
-		case c := <-r.Command:
+			delete(r.Players, p.State.Nickname)
+			r.Broadcast <- &Message{Status: StatusInfo, Room: r.ID, Info: "User " + p.State.Nickname + " deleted from room"}
+
+		case c := <-r.InCommand:
 			r.PerformCommand(c)
 		}
 
@@ -75,28 +84,27 @@ func (r *Room) RoomManager() {
 }
 
 func (r *Room) Run() {
-	r.Broadcast <- &Message{Type: MsgInfo, Data: InfoData{Status: StatusStartGame, Room: r.ID, Msg: "Starting of Room"}}
 	r.Ticker = time.NewTicker(time.Second)
 	r.GameState("init")
+	r.Broadcast <- &Message{Status: StatusStartGame, Room: r.ID, Info: "Starting of Room"}
 	for {
 		<-r.Ticker.C
-		gameState, end := r.GameState("next")
+		end := r.GameState("next")
 
-		r.Broadcast <- &Message{Type: MsgGameState, Data: gameState}
+		r.Broadcast <- &Message{Status: StatusGame, Room: r.ID}
 		if end {
 			break
 		}
 	}
 	r.Ticker.Stop()
-	r.Broadcast <- &Message{Type: MsgInfo, Data: InfoData{Status: StatusEndGame, Room: r.ID, Msg: "Room Stop"}}
+	r.Broadcast <- &Message{Status: StatusEndGame, Room: r.ID, Info: "Room Stop"}
 	r.Stop()
 }
 
 func (r *Room) Stop() {
 }
 
-func (r *Room) GameState(key string) (GameState, bool) {
-	gameState := GameState{}
+func (r *Room) GameState(key string) bool {
 	for _, p := range r.Players {
 		switch key {
 		case "init":
@@ -104,20 +112,19 @@ func (r *Room) GameState(key string) (GameState, bool) {
 		case "next":
 			p.NextPlayerState()
 		}
-		gameState[p.Nickname] = p.Data
 	}
 
 	endflag := false
 	if key == "next" {
 		endflag = r.ProcessGameState()
 	}
-	return gameState, endflag
+	return endflag
 }
 
 func (r *Room) ProcessGameState() bool {
 	return false
 }
 
-func (r *Room) PerformCommand(c *Command) {
+func (r *Room) PerformCommand(c *IncommingCommand) {
 
 }

@@ -29,7 +29,7 @@ func (g *Game) ProcessConn(p *Player) {
 
 	r := g.FindRoom()
 	if r == nil {
-		p.Conn.WriteJSON(Message{Type: MsgError, Data: ErrorData{Error: "All rooms are busy"}})
+		p.Conn.WriteJSON(Message{Status: StatusError, Info: "All rooms are busy"})
 		p.Conn.Close()
 		return
 	}
@@ -39,7 +39,7 @@ func (g *Game) ProcessConn(p *Player) {
 	if len(r.Players) == r.MaxPlayers {
 		go r.Run()
 	} else {
-		r.Broadcast <- &Message{Type: MsgInfo, Data: InfoData{Status: StatusWait, Room: r.ID}}
+		r.Broadcast <- &Message{Status: StatusWait, Room: r.ID}
 	}
 }
 
