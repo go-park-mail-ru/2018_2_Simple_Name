@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"sync"
 )
 
@@ -8,6 +9,7 @@ type Game struct {
 	Rooms      map[string]*Room
 	MaxRooms   int
 	Connection chan *Player
+	Mutex      *sync.Mutex
 }
 
 func NewGame() *Game {
@@ -15,18 +17,19 @@ func NewGame() *Game {
 		Rooms:      make(map[string]*Room),
 		MaxRooms:   10,
 		Connection: make(chan *Player),
+		Mutex:      &sync.Mutex{},
 	}
 }
 
 func (g *Game) Run() {
 	for {
 		conn := <-g.Connection
-		g.ProcessConn(conn)
+		go g.ProcessConn(conn)
 	}
 }
 
 func (g *Game) ProcessConn(p *Player) {
-
+	fmt.Println("Game: Process connection")
 	r := g.FindRoom()
 	if r == nil {
 		p.Conn.WriteJSON(Message{Status: StatusError, Info: "All rooms are busy"})
@@ -35,12 +38,7 @@ func (g *Game) ProcessConn(p *Player) {
 	}
 	p.Room = r
 	r.Register <- p
-
-	if len(r.Players) == r.MaxPlayers {
-		go r.Run()
-	} else {
-		r.Broadcast <- &Message{Status: StatusWait, Room: r.ID}
-	}
+	r.InitPlayer(p)
 }
 
 func (g *Game) FindRoom() *Room {
@@ -55,11 +53,18 @@ func (g *Game) FindRoom() *Room {
 	}
 	r := NewRoom()
 	go r.RoomManager()
+	go g.FreeRoom(r)
 
-	mu := &sync.Mutex{}
-	mu.Lock()
+	g.Mutex.Lock()
 	g.Rooms[r.ID] = r
-	mu.Unlock()
+	g.Mutex.Unlock()
 
 	return r
+}
+
+func (g *Game) FreeRoom(r *Room) {
+	<-r.FreeRoom
+	delete(g.Rooms, r.ID)
+
+	fmt.Println("Game: delete room ", r.ID)
 }

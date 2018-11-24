@@ -12,14 +12,16 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 )
 
@@ -67,7 +69,7 @@ var postgres models.UserService = &db.PostgresUserService{}
 var redis models.UserSessionService = &session.RedisSessionService{}
 var logger, _ = zap.NewProduction()
 var sugar = logger.Sugar()
-var g *game.Game = game.NewGame()
+var gameService = game.NewGame()
 
 func main() {
 
@@ -95,7 +97,7 @@ func main() {
 
 	//defer obj.Close() // Не будет работать
 
-	go g.Run()
+	go gameService.Run()
 
 	siteMux := http.NewServeMux()
 	siteMux.HandleFunc("/signup", CORSsettings(signupHandler))
@@ -104,7 +106,7 @@ func main() {
 	siteMux.HandleFunc("/leaders", CORSsettings(leadersHandler))
 	siteMux.HandleFunc("/islogged", CORSsettings(islogged))
 	siteMux.HandleFunc("/logout", CORSsettings(logOut))
-	siteMux.HandleFunc("/startgame", CORSsettings(startGame))
+	siteMux.HandleFunc("/startgame", startGame)
 	siteMux.HandleFunc("/leaderscount", CORSsettings(leadersCount))
 	siteMux.HandleFunc("/getAvatar", CORSsettings(getAvatar))
 
@@ -112,7 +114,7 @@ func main() {
 
 	port := "8080"
 
-	sugar.Infow("starting server at :"+port)
+	sugar.Infow("starting server at :" + port)
 
 	//fmt.Println("starting server at :8080")
 	if err := http.ListenAndServe(":"+port, siteHandler); err != nil {
@@ -120,25 +122,55 @@ func main() {
 	}
 }
 
-
-
 func startGame(w http.ResponseWriter, r *http.Request) {
-
-	upgrader := websocket.Upgrader{}
-
-	conn, err := upgrader.Upgrade(w, r, nil)
+	sugar.Info("Startgame signal from user")
+	sess, err := findSession(r)
 	if err != nil {
-		sugar.Errorw("Cannot upgrade connection", "Error:",err)
-		w.WriteHeader(http.StatusBadRequest)
+		sugar.Errorw("Failed get SESSION",
+			"error", err,
+			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	nickname:="nick"///////////////////fix it
+	if sess == nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 
-	g.Connection <- &game.Player{Conn:conn,Nickname:nickname}
+	user, err := postgres.GetUser(sess.Email)
+	if user == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	upgrader := websocket.Upgrader{}
+	upgrader.CheckOrigin = func(r *http.Request) bool {
+		origin := r.Header["Origin"]
+		if len(origin) == 0 {
+			return true
+		}
+		u, err := url.Parse(origin[0])
+		if err != nil {
+			return false
+		}
+		originUrl := "127.0.0.1:3000"
+		return strings.EqualFold(u.Host, originUrl)
+	}
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		sugar.Errorw("Cannot upgrade connection", "Error:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	player := game.NewPlayer(user.Nick, conn)
+
+	gameService.Connection <- player
 }
 
-func leadersCount(w http.ResponseWriter, r *http.Request)  {
+func leadersCount(w http.ResponseWriter, r *http.Request) {
 	limit := "50" // Общий лимит на показ лидеров
 	count, err := postgres.GetLeadersCount(limit)
 
@@ -221,10 +253,8 @@ func ValidUser(user *models.User) bool {
 	validEmail := govalidator.IsEmail(user.Email)
 	validPassword := govalidator.HasUpperCase(user.Password) && govalidator.HasLowerCase(user.Password) //&& govalidator.IsByteLength(user.Password, 6, 12)
 	validNick := !govalidator.HasWhitespace(user.Nick)
-	validName := govalidator.IsAlpha(user.Name) && !govalidator.HasWhitespace(user.Nick)
-	validLastName := govalidator.IsAlpha(user.LastName) && !govalidator.HasWhitespace(user.Nick)
 
-	if validEmail && validPassword && validNick && validName && validLastName {
+	if validEmail && validPassword && validNick {
 		return true
 	} else {
 		return false
@@ -321,7 +351,6 @@ func signinHandler(w http.ResponseWriter, r *http.Request) {
 
 	existUser, err := postgres.GetUser(user.Email)
 
-
 	if existUser == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -331,7 +360,7 @@ func signinHandler(w http.ResponseWriter, r *http.Request) {
 
 		sugar.Errorw("Failed get USER",
 			"error", err,
-			"time", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
+			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -348,10 +377,10 @@ func signinHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getAvatar(w http.ResponseWriter, r *http.Request)  {
+func getAvatar(w http.ResponseWriter, r *http.Request) {
 	sess, err := findSession(r)
 
-	if err != nil{
+	if err != nil {
 		sugar.Errorw("Failed get SESSION",
 			"error", err,
 			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
@@ -364,7 +393,7 @@ func getAvatar(w http.ResponseWriter, r *http.Request)  {
 		return
 	}
 
-	file, err := os.Open("./media/"+sess.Email)
+	file, err := os.Open("./media/" + sess.Email)
 
 	//res, _ := ioutil.ReadAll(file)
 
@@ -375,7 +404,6 @@ func getAvatar(w http.ResponseWriter, r *http.Request)  {
 		return
 	}
 
-
 	FileHeader := make([]byte, 512)
 	//Copy the headers into the FileHeader buffer
 	file.Read(FileHeader)
@@ -383,7 +411,7 @@ func getAvatar(w http.ResponseWriter, r *http.Request)  {
 	FileContentType := http.DetectContentType(FileHeader)
 
 	//Get the file size
-	FileStat, _ := file.Stat()                     //Get info from file
+	FileStat, _ := file.Stat()                         //Get info from file
 	FileSize := strconv.FormatInt(FileStat.Size(), 10) //Get file size as a string
 
 	//Send the headers
@@ -408,7 +436,7 @@ func profileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 
 	sess, err := findSession(r)
 
-	if err != nil{
+	if err != nil {
 		sugar.Errorw("Failed get SESSION",
 			"error", err,
 			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
@@ -578,7 +606,6 @@ func islogged(w http.ResponseWriter, r *http.Request) {
 	//}
 }
 
-
 func logOut(w http.ResponseWriter, r *http.Request) {
 	sess, err := findSession(r)
 
@@ -630,16 +657,14 @@ func getJSONReq(r *http.Request) (*models.User, error) {
 	return user, nil
 }
 
-func getFormReq(r *http.Request) (*models.User, error) {
-	user := new(models.User)
-	user.Email = r.FormValue("email")
-	user.Password = r.FormValue("password")
-	user.Name = r.FormValue("name")
-	user.LastName = r.FormValue("last_name")
-	user.Nick = r.FormValue("nick")
+// func getFormReq(r *http.Request) (*models.User, error) {
+// 	user := new(models.User)
+// 	user.Email = r.FormValue("email")
+// 	user.Password = r.FormValue("password")
+// 	user.Nick = r.FormValue("nick")
 
-	return user, nil
-}
+// 	return user, nil
+// }
 
 func uploadFileReq(fileName string, r *http.Request) error {
 	if err := r.ParseMultipartForm(32 << 20); nil != err {

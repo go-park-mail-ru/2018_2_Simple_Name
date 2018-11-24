@@ -3,18 +3,15 @@ package models
 import "github.com/gomodule/redigo/redis"
 
 type User struct {
-	Name     string `json:"name"`
-	LastName string `json:"last_name"`
 	Nick     string `json:"nick"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	KeyWord  string `json:"-"`
 	Score    int    `json:"score"`
-	Age      int    `json:"age"`
 }
 
 type UserSession struct {
-	Id string
+	Id    string
 	Email string
 }
 
@@ -23,7 +20,7 @@ type DBinfo struct {
 }
 
 type UserService interface {
-	InitService() (error)
+	InitService() error
 	GetUser(email string) (*User, error)
 	CreateUser(u *User) error
 	UpdateUser(existData *User, newData *User) (*User, error)
@@ -32,12 +29,11 @@ type UserService interface {
 	GetLeadersCount(limit string) (int, error)
 }
 
-
 type UserSessionService interface {
 	InitService() (redis.Conn, error)
-	Create(key string, value string) (error)
+	Create(key string, value string) error
 	Get(key string) (string, error)
-	Delete(key string) (error)
+	Delete(key string) error
 }
 
 //type UserSessionService interface {
@@ -47,7 +43,4 @@ type UserSessionService interface {
 //	Get(user *User) (*UserSession, error)
 //}
 
-
-
 //var redis UserSessionService = new(session.RedisSessionService)
-

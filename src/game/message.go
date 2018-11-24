@@ -6,7 +6,7 @@ const (
 	StatusWait      string = "wait"
 	StatusStartGame string = "startgame"
 	StatusGame      string = "game"
-	StatusEndGame   string = "endgame"
+	StatusGameOver  string = "gameover"
 )
 
 type Message struct {
@@ -18,10 +18,13 @@ type Message struct {
 }
 
 type IncommingMessage struct {
-	Command string   `json:"command"`
-	Info    string   `json:"info"`
-	Pos     Position `json:"pos"`
-	MobType string   `json:"mobtype"`
+	Command       string   `json:"command"`
+	Info          string   `json:"info"`
+	ClickPos      Position `json:"clickpos"`
+	CreateMobType string   `json:"createmobtype"`
+	OwnTarget     Target   `json:"owntarget"`
+	RivalTarget   Target   `json:"rivaltarget"`
+	Area          Area     `json:"area"`
 }
 
 type PrivateMessage struct {
