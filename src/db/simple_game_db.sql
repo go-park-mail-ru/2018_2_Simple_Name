@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS users CASCADE;
+
 CREATE EXTENSION IF NOT EXISTS citext;
 CREATE TABLE IF NOT EXISTS users(
   email CITEXT PRIMARY KEY,        -- Обязательное поле

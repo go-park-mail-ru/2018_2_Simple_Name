@@ -112,7 +112,7 @@ func main() {
 
 	siteHandler := logging.AccessLogMiddleware(siteMux, sugar)
 
-	port := "8080"
+	port := "80"
 
 	sugar.Infow("starting server at :" + port)
 
