@@ -85,6 +85,7 @@ func (p *Player) Send(msg *Message) {
 	}
 }
 
+
 func (p *Player) AddMobCommand(Mobtype string) {
 
 	fmt.Println("Player " + p.State.Nickname + ": Perform command addmob " + Mobtype)
@@ -101,6 +102,7 @@ func (p *Player) AddMobCommand(Mobtype string) {
 		}
 	}
 }
+
 
 func (p *Player) KillMobCommand(pos Position) int {
 

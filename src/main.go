@@ -1,11 +1,19 @@
 package main
 
 import (
+	//"SimpleGame/2018_2_Simple_Name/src/chat"
+	//"SimpleGame/2018_2_Simple_Name/src/game"
+	//"SimpleGame/2018_2_Simple_Name/src/logging"
+	//"SimpleGame/2018_2_Simple_Name/src/models"
+	//"SimpleGame/2018_2_Simple_Name/src/session"
+
 	"SimpleGame/db"
+	//"SimpleGame/chat"
 	"SimpleGame/game"
 	"SimpleGame/logging"
 	"SimpleGame/models"
 	"SimpleGame/session"
+	//"SimpleGame/2018_2_Simple_Name/src/db"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -71,6 +79,9 @@ var logger, _ = zap.NewProduction()
 var sugar = logger.Sugar()
 var gameService = game.NewGame()
 
+//var chatService = chat.NewChat()
+
+
 func main() {
 
 	defer logger.Sync()
@@ -99,6 +110,8 @@ func main() {
 
 	go gameService.Run()
 
+	//go chatService.Open()
+
 	siteMux := http.NewServeMux()
 	siteMux.HandleFunc("/signup", CORSsettings(signupHandler))
 	siteMux.HandleFunc("/signin", CORSsettings(signinHandler))
@@ -112,7 +125,7 @@ func main() {
 
 	siteHandler := logging.AccessLogMiddleware(siteMux, sugar)
 
-	port := "80"
+	port := "8080"
 
 	sugar.Infow("starting server at :" + port)
 
@@ -121,6 +134,45 @@ func main() {
 		log.Fatalf("cannot listen: %s", err)
 	}
 }
+//
+//func startChat(w http.ResponseWriter, r *http.Request) {
+//	sess, err := findSession(r)
+//	if err != nil {
+//		sugar.Errorw("Failed get SESSION",
+//			"error", err,
+//			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
+//		w.WriteHeader(http.StatusInternalServerError)
+//		return
+//	}
+//
+//	if sess == nil {
+//		w.WriteHeader(http.StatusUnauthorized)
+//		return
+//	}
+//
+//	user, err := postgres.GetUser(sess.Email)
+//	if user == nil {
+//		w.WriteHeader(http.StatusNotFound)
+//		return
+//	}
+//
+//	upgrader := websocket.Upgrader{}
+//	//upgrader.CheckOrigin = true
+//	upgrader.CheckOrigin = func(r *http.Request) bool {
+//		return true
+//	}
+//
+//	conn, err := upgrader.Upgrade(w, r, nil)
+//	if err != nil {
+//		sugar.Errorw("Cannot upgrade connection", "Error:", err)
+//		w.WriteHeader(http.StatusInternalServerError)
+//		return
+//	}
+//
+//	user := chat.NewUser(user.Nick, conn)
+//
+//	gameService.Connection <- player
+//}
 
 func startGame(w http.ResponseWriter, r *http.Request) {
 	sugar.Info("Startgame signal from user")
