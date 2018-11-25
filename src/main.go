@@ -12,11 +12,11 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/url"
+	//"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
+	//"strings"
 	"time"
 
 	"github.com/asaskevich/govalidator"
@@ -145,19 +145,20 @@ func startGame(w http.ResponseWriter, r *http.Request) {
 	}
 
 	upgrader := websocket.Upgrader{}
-	upgrader.CheckOrigin = true
-	//upgrader.CheckOrigin = func(r *http.Request) bool {
-	//	origin := r.Header["Origin"]
-	//	if len(origin) == 0 {
-	//		return true
-	//	}
-	//	u, err := url.Parse(origin[0])
-	//	if err != nil {
-	//		return false
-	//	}
-	//	originUrl := "simplegame.now.sh"
-	//	return strings.EqualFold(u.Host, originUrl)
-	//}
+	//upgrader.CheckOrigin = true
+	upgrader.CheckOrigin = func(r *http.Request) bool {
+		return true
+		//origin := r.Header["Origin"]
+		//if len(origin) == 0 {
+		//	return true
+		//}
+		//u, err := url.Parse(origin[0])
+		//if err != nil {
+		//	return false
+		//}
+		//originUrl := "simplegame.now.sh"
+		//return strings.EqualFold(u.Host, originUrl)
+	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
