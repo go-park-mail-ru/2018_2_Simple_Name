@@ -13,18 +13,19 @@ type Game struct {
 }
 
 func NewGame() *Game {
+	mu := &sync.Mutex{}
 	return &Game{
 		Rooms:      make(map[string]*Room),
 		MaxRooms:   10,
 		Connection: make(chan *Player),
-		Mutex:      &sync.Mutex{},
+		Mutex:      mu,
 	}
 }
 
 func (g *Game) Run() {
 	for {
 		conn := <-g.Connection
-		go g.ProcessConn(conn)
+		g.ProcessConn(conn)
 	}
 }
 
@@ -42,15 +43,23 @@ func (g *Game) ProcessConn(p *Player) {
 }
 
 func (g *Game) FindRoom() *Room {
+	fmt.Println("Game: Find room")
+
 	for _, r := range g.Rooms {
+		fmt.Println("Game: in for")
+
 		if len(r.Players) < r.MaxPlayers {
 			return r
 		}
 	}
+	fmt.Println("Game: after for")
 
 	if len(g.Rooms) >= g.MaxRooms {
 		return nil
 	}
+
+	fmt.Println("Game: New room")
+
 	r := NewRoom()
 	go r.RoomManager()
 	go g.FreeRoom(r)
