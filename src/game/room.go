@@ -83,7 +83,7 @@ Loop:
 
 		case m := <-r.Message:
 
-			fmt.Println("Room Manager "+r.ID+"send message: ", m)
+			fmt.Println("Room Manager " + r.ID + "send message")
 
 			m.Player.Send(m.Msg)
 
