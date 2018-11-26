@@ -1,7 +1,5 @@
 package models
 
-import "github.com/gomodule/redigo/redis"
-
 type User struct {
 	Nick     string `json:"nick"`
 	Email    string `json:"email"`
@@ -10,10 +8,10 @@ type User struct {
 	Score    int    `json:"score"`
 }
 
-type UserSession struct {
-	Id    string
-	Email string
-}
+//type UserSession struct {
+//	Id    string
+//	Email string
+//}
 
 type DBinfo struct {
 	LeadersCount int `json:"leaderscount"`
@@ -28,13 +26,13 @@ type UserService interface {
 	GetUsersByScore(limit string, offset string) ([]*User, error)
 	GetLeadersCount(limit string) (int, error)
 }
-
-type UserSessionService interface {
-	InitService() (redis.Conn, error)
-	Create(key string, value string) error
-	Get(key string) (string, error)
-	Delete(key string) error
-}
+//
+//type UserSessionService interface {
+//	InitService() (redis.Conn, error)
+//	Create(key string, value string) error
+//	Get(key string) (string, error)
+//	Delete(key string) error
+//}
 
 //type UserSessionService interface {
 //

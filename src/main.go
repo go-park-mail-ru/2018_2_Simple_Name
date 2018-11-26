@@ -6,13 +6,16 @@ import (
 	//"SimpleGame/2018_2_Simple_Name/src/logging"
 	//"SimpleGame/2018_2_Simple_Name/src/models"
 	//"SimpleGame/2018_2_Simple_Name/src/session"
+	"context"
 
 	"SimpleGame/db"
-	//"SimpleGame/chat"
+	"google.golang.org/grpc"
+
 	"SimpleGame/game"
 	"SimpleGame/logging"
 	"SimpleGame/models"
 	"SimpleGame/session"
+	"SimpleGame/generator"
 	//"SimpleGame/2018_2_Simple_Name/src/db"
 	"encoding/json"
 	"fmt"
@@ -28,7 +31,7 @@ import (
 	"time"
 
 	"github.com/asaskevich/govalidator"
-	"github.com/gorilla/mux"
+	//"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 )
@@ -74,19 +77,32 @@ func IsLoggedIn(next http.HandlerFunc) http.HandlerFunc {
 }
 
 var postgres models.UserService = &db.PostgresUserService{}
-var redis models.UserSessionService = &session.RedisSessionService{}
+//var redis models.UserSessionService = &session.RedisSessionService{}
 var logger, _ = zap.NewProduction()
 var sugar = logger.Sugar()
 var gameService = game.NewGame()
-
+var sessManager session.AuthCheckerClient
+var ctx context.Context
 //var chatService = chat.NewChat()
 
 
 func main() {
+	grpcConn, err := grpc.Dial("127.0.0.1:8081", grpc.WithInsecure())
+
+	if err != nil || grpcConn == nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	defer grpcConn.Close()
+
+	sessManager = session.NewAuthCheckerClient(grpcConn)
+
+	ctx = context.Background()
 
 	defer logger.Sync()
 
-	err := postgres.InitService()
+	err = postgres.InitService()
 
 	if err != nil {
 		sugar.Errorw("Failed connect to the database",
@@ -95,7 +111,7 @@ func main() {
 		return
 	}
 
-	_, err = redis.InitService()
+	//_, err = redis.InitService()
 
 	if err != nil {
 		//logging.ErrorLog("Failed open redis", err, sugar)
@@ -134,45 +150,7 @@ func main() {
 		log.Fatalf("cannot listen: %s", err)
 	}
 }
-//
-//func startChat(w http.ResponseWriter, r *http.Request) {
-//	sess, err := findSession(r)
-//	if err != nil {
-//		sugar.Errorw("Failed get SESSION",
-//			"error", err,
-//			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
-//		w.WriteHeader(http.StatusInternalServerError)
-//		return
-//	}
-//
-//	if sess == nil {
-//		w.WriteHeader(http.StatusUnauthorized)
-//		return
-//	}
-//
-//	user, err := postgres.GetUser(sess.Email)
-//	if user == nil {
-//		w.WriteHeader(http.StatusNotFound)
-//		return
-//	}
-//
-//	upgrader := websocket.Upgrader{}
-//	//upgrader.CheckOrigin = true
-//	upgrader.CheckOrigin = func(r *http.Request) bool {
-//		return true
-//	}
-//
-//	conn, err := upgrader.Upgrade(w, r, nil)
-//	if err != nil {
-//		sugar.Errorw("Cannot upgrade connection", "Error:", err)
-//		w.WriteHeader(http.StatusInternalServerError)
-//		return
-//	}
-//
-//	user := chat.NewUser(user.Nick, conn)
-//
-//	gameService.Connection <- player
-//}
+
 
 func startGame(w http.ResponseWriter, r *http.Request) {
 	sugar.Info("Startgame signal from user")
@@ -355,9 +333,10 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			err = session.Create(redis, user, &w)
+			//err = session.Create(redis, user, &w)
+				err = SetCookie(user, &w)
 
-			if err != nil {
+				if err != nil {
 				sugar.Errorw("Failed create SESSION",
 					"error", err,
 					"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
@@ -376,6 +355,28 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func SetCookie(user *models.User, w *http.ResponseWriter) (error) {
+	uSess := new(session.UserSession)
+	sess := new(http.Cookie)
+	sess.Name = "session_id"
+	sess.Value = generator.UidGen()
+	sess.Expires = time.Now().Add(time.Hour*5)
+
+	uSess.ID = sess.Value
+	uSess.Email = user.Email
+
+	http.SetCookie(*w, sess)
+
+	_, err := sessManager.Create(ctx, uSess)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 
 func signinHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -421,7 +422,16 @@ func signinHandler(w http.ResponseWriter, r *http.Request) {
 
 	if existUser.Password == user.Password {
 
-		session.Create(redis, user, &w)
+		//session.Create(redis, user, &w)
+		err := SetCookie(user, &w)
+
+		if err != nil {
+			sugar.Errorw("Failed create SESSION",
+				"error", err,
+				"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
 		w.WriteHeader(http.StatusOK)
 		return
@@ -482,11 +492,11 @@ func getAvatar(w http.ResponseWriter, r *http.Request) {
 
 func profileHandler(w http.ResponseWriter, r *http.Request) { // Валидировать данные
 
-	vars := mux.Vars(r)
-
-	pId := vars["id"]
-
-	fmt.Println(pId)
+	//vars := mux.Vars(r)
+	//
+	//pId := vars["id"]
+	//
+	//fmt.Println(pId)
 
 	sess, err := findSession(r)
 
@@ -504,13 +514,14 @@ func profileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 	}
 
 	if r.Method == http.MethodGet {
+		fmt.Println(sess.Email)
 		user, err := postgres.GetUser(sess.Email)
 
-		//if err != nil { // Полная проверка ошибки?
-		//	//fmt.Println(err.Error())
-		//	w.WriteHeader(http.StatusInternalServerError)
-		//	return
-		//}
+		if err != nil { // Полная проверка ошибки?
+			//fmt.Println(err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
 		userInfo, err := json.Marshal(user)
 
@@ -596,17 +607,34 @@ func profileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 
 }
 
-func findSession(r *http.Request) (*models.UserSession, error) {
+func findSession(r *http.Request) (*session.UserSession, error) {
 	val := r.Cookies()
 
 	for i := 0; i < len(val); i++ {
-		//fmt.Println(val[i].Value)
-		if val[i].Name == "session_id" {
-			sess, err := session.Get(redis, val[i].Value)
 
+		if val[i].Name == "session_id" {
+			sessKey := new(session.SessionKey)
+
+			sessValue := new(session.SessionValue)
+
+
+			sessKey.ID = val[i].Value
+			//fmt.Println(sessKey)
+			sessValue, err := sessManager.Get(ctx, sessKey)
+			fmt.Println(sessValue)
 			if err != nil {
 				return nil, err
 			}
+
+			sess := new(session.UserSession)
+
+			sess.ID = sessKey.ID
+			sess.Email = sessValue.Email
+
+			//sess, err := session.Get(redis, val[i].Value)
+
+
+
 			return sess, nil
 
 		} else {
@@ -616,6 +644,72 @@ func findSession(r *http.Request) (*models.UserSession, error) {
 
 	return nil, nil
 }
+
+
+func RmCookie(r *http.Request, w *http.ResponseWriter) (error) {
+	UserSession, err := findSession(r)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
+
+	if UserSession == nil {
+		fmt.Println("UserSession = nil")
+		return nil
+	}
+
+	sess := new(http.Cookie)
+	sess.Name = "session_id"
+	sess.Value = UserSession.ID
+	sess.Expires = time.Now()
+
+	uSess := new(session.SessionKey)
+	uSess.ID = sess.Value
+
+	http.SetCookie(*w, sess)
+
+	_, err = sessManager.Delete(ctx, uSess)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+
+func logOut(w http.ResponseWriter, r *http.Request) {
+	//sess, err := findSession(r)
+	err := RmCookie(r, &w)
+
+	if err != nil {
+		sugar.Errorw("Failed find SESSION",
+			"error", err,
+			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	//if sess == nil {
+	//	w.WriteHeader(http.StatusUnauthorized)
+	//	return
+	//}
+
+	//_, err = session.Delete(redis, sess.Id, &w)
+
+	//if err != nil {
+	//	sugar.Errorw("Failed delete SESSION",
+	//		"error", err,
+	//		"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
+	//	w.WriteHeader(http.StatusInternalServerError)
+	//	return
+	//}
+
+	w.WriteHeader(http.StatusOK)
+	return
+}
+
 
 func islogged(w http.ResponseWriter, r *http.Request) {
 
@@ -658,36 +752,6 @@ func islogged(w http.ResponseWriter, r *http.Request) {
 	//	}
 	//
 	//}
-}
-
-func logOut(w http.ResponseWriter, r *http.Request) {
-	sess, err := findSession(r)
-
-	if err != nil {
-		sugar.Errorw("Failed find SESSION",
-			"error", err,
-			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if sess == nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	_, err = session.Delete(redis, sess.Id, &w)
-
-	if err != nil {
-		sugar.Errorw("Failed delete SESSION",
-			"error", err,
-			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	return
 }
 
 func getJSONReq(r *http.Request) (*models.User, error) {

@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+
+package session;
+
+
+message UserSession {
+    string ID = 1;
+    string Email = 2;
+}
+
+
+message SessionValue {
+    string Email = 1;
+}
+
+message SessionKey {
+    string ID = 1;
+}
+
+message Nothing {
+ bool d = 1;
+}
+
+
+service AuthChecker {
+    rpc Create(UserSession) returns (Nothing) {}
+    rpc Get(SessionKey) returns (SessionValue) {}
+    rpc Delete(SessionKey) returns (Nothing) {}
+}

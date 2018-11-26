@@ -235,13 +235,9 @@ func (r *Room) GetRival(player *Player) *Player {
 }
 
 func (r *Room) InitPlayer(p *Player) {
-	if p.State.Nickname == "Grisha"{
-		p.State.Points = 10000000
-		p.State.HP = 10000000
-	} else {
-		p.State.Points = 100
-		p.State.HP = 100
-	}
+	p.State.Points = 150
+	p.State.HP = 100
+
 	go p.Listen()
 	p.Listenflag <- true
 
