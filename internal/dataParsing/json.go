@@ -3,7 +3,6 @@ package dataParsing
 import (
 	//"SimpleGame/2018_2_Simple_Name/internal/models"
 	"SimpleGame/internal/models"
-	"encoding/json"
 	"io/ioutil"
 	"net/http"
 )
@@ -19,7 +18,7 @@ func GetJSONReq(r *http.Request) (*models.User, error) {
 
 	user := new(models.User)
 
-	err = json.Unmarshal(body, user)
+	err = user.UnmarshalJSON(body)
 
 	if err != nil {
 		//fmt.Println("Ошибка чтения 2: ", err.Error())
@@ -28,4 +27,3 @@ func GetJSONReq(r *http.Request) (*models.User, error) {
 
 	return user, nil
 }
-

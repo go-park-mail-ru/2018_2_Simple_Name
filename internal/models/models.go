@@ -8,6 +8,8 @@ type User struct {
 	Score    int    `json:"score"`
 }
 
+type UserList []User
+
 //type UserSession struct {
 //	Id    string
 //	Email string
@@ -26,6 +28,7 @@ type UserService interface {
 	GetUsersByScore(limit string, offset string) ([]*User, error)
 	GetLeadersCount(limit string) (int, error)
 }
+
 //
 //type UserSessionService interface {
 //	InitService() (redis.Conn, error)

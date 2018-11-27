@@ -17,8 +17,6 @@ import (
 	//"time"
 )
 
-
-
 //var sessManager session.AuthCheckerClient
 //var ctx context.Context
 

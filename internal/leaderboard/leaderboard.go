@@ -3,13 +3,14 @@ package leaderboard
 import (
 	//"SimpleGame/2018_2_Simple_Name/internal/db/postgres"
 	//"SimpleGame/2018_2_Simple_Name/internal/models"
-	"SimpleGame/internal/models"
 	"SimpleGame/internal/db/postgres"
+	"SimpleGame/internal/models"
 	"encoding/json"
-	"go.uber.org/zap"
 	"net/http"
 	"strconv"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 var logger, _ = zap.NewProduction()
@@ -36,7 +37,7 @@ func LeadersCount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, _ := json.Marshal(info)
+	resp, _ := info.MarshalJSON()
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -63,6 +64,7 @@ func LeadersHandler(w http.ResponseWriter, r *http.Request) {
 		offset = "0"
 	}
 
+	// topp := new(models.UserList)
 	top, err := db.GetUsersByScore(limit, offset)
 
 	if err != nil {
@@ -74,6 +76,7 @@ func LeadersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := json.Marshal(top)
+	// resp, err := topp.MarshalJSON() //top - массив стуктур, не знаю как переделать на easyjson
 
 	if err != nil {
 		sugar.Errorw("Failed set JSON",

@@ -5,7 +5,7 @@ import (
 	"SimpleGame/internal/models"
 	"database/sql"
 	"fmt"
-	//"io/ioutil"
+	// "io/ioutil"
 
 	_ "github.com/lib/pq"
 )
@@ -26,15 +26,12 @@ func (s *PostgresUserService) InitService() error {
 	if err = s.db.Ping(); err != nil {
 		return err
 	}
-	//modelsconf, err := ioutil.ReadFile("./simple_game_db.sql")
-	//if err != nil {
-	//	return err
-	//}
-	//_, err = s.db.Exec(string(modelsconf))
-	//
-	//if err != nil {
-	//	return err
-	//}
+	// initDB, err := ioutil.ReadFile("./simple_game_db.sql")
+	// _, err = s.db.Exec(string(initDB))
+	// if err != nil {
+	// 	return err
+	// }
+
 	fmt.Println("You connected to the database.")
 
 	return nil
