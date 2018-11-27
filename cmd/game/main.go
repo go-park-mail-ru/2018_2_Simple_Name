@@ -1,11 +1,15 @@
 package main
 
 import (
+	//"SimpleGame/2018_2_Simple_Name/internal/db/postgres"
+	//"SimpleGame/2018_2_Simple_Name/internal/session"
+	"SimpleGame/internal/session"
+	"SimpleGame/internal/db/postgres"
 	"SimpleGame/internal/game"
 	//"SimpleGame/session"
 	"fmt"
 	"github.com/gorilla/websocket"
-	"google.golang.org/grpc"
+	//"google.golang.org/grpc"
 	"log"
 //	"net"
 	"net/http"
@@ -21,12 +25,20 @@ import (
 var gameService = game.NewGame()
 
 func main() {
-	grpcConn, err := grpc.Dial("127.0.0.1:8081", grpc.WithInsecure())
 
-	if err != nil || grpcConn == nil {
-		fmt.Println(err.Error())
+	err := db.OpenConn()
+
+	if err != nil {
 		return
 	}
+
+	grpcConn, err := session.OpenConn()
+
+	if err != nil || grpcConn == nil {
+		return
+	}
+
+	defer grpcConn.Close()
 
 	mux := http.NewServeMux()
 
@@ -34,18 +46,19 @@ func main() {
 
 	mux.HandleFunc("/startgame", startGame)
 
+	fmt.Println("Starting game server at :8082")
+
 	if err := http.ListenAndServe(":8082", mux); err != nil {
 		log.Fatalf("cannot listen: %s", err)
 	}
 
-	fmt.Println("Starting sess server at :8082")
 }
 
 
 
 func startGame(w http.ResponseWriter, r *http.Request) {
 	//sugar.Info("Startgame signal from user")
-	sess, err := findSession(r)
+	sess, err := session.FindSession(r)
 	if err != nil {
 		fmt.Println("Failed get session", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
@@ -57,7 +70,7 @@ func startGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := postgres.GetUser(sess.Email)
+	user, err := db.GetUser(sess.Email)
 
 	if user == nil {
 		w.WriteHeader(http.StatusNotFound)
