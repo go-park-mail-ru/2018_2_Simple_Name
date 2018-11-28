@@ -3,27 +3,27 @@ package main
 import (
 	//"SimpleGame/2018_2_Simple_Name/internal/db/postgres"
 	//"SimpleGame/2018_2_Simple_Name/internal/session"
-	"SimpleGame/internal/session"
 	"SimpleGame/internal/db/postgres"
-	"SimpleGame/internal/game"
-	//"SimpleGame/session"
+	"SimpleGame/internal/game" //"SimpleGame/session"
+	"SimpleGame/internal/session"
 	"fmt"
-	"github.com/gorilla/websocket"
-	//"google.golang.org/grpc"
-	"log"
-//	"net"
+	"log" //	"net"
 	"net/http"
+
+	"github.com/gorilla/websocket"
+	"github.com/prometheus/client_golang/prometheus/promhttp" 
+	//"google.golang.org/grpc"
 	//"strconv"
 	//"time"
 )
 
-
-
 //var sessManager session.AuthCheckerClient
 //var ctx context.Context
 
-var gameService = game.NewGame()
-
+var (
+	
+	gameService = game.NewGame()
+)
 func main() {
 
 	err := db.OpenConn()
@@ -45,6 +45,7 @@ func main() {
 	go gameService.Run()
 
 	mux.HandleFunc("/startgame", startGame)
+	mux.Handle("/metrics", promhttp.Handler())
 
 	fmt.Println("Starting game server at :8082")
 
@@ -53,8 +54,6 @@ func main() {
 	}
 
 }
-
-
 
 func startGame(w http.ResponseWriter, r *http.Request) {
 	//sugar.Info("Startgame signal from user")

@@ -8,18 +8,18 @@ import (
 	//middle "SimpleGame/2018_2_Simple_Name/internal/middleware"
 	//"SimpleGame/2018_2_Simple_Name/internal/profile"
 	//"SimpleGame/2018_2_Simple_Name/internal/session"
-	"SimpleGame/internal/session"
 	"SimpleGame/internal/auth"
 	"SimpleGame/internal/db/postgres"
 	leaders "SimpleGame/internal/leaderboard"
 	middle "SimpleGame/internal/middleware"
 	"SimpleGame/internal/profile"
-
+	"SimpleGame/internal/session"
+	"SimpleGame/internal/stat"
 	"log"
-	"net/http"
-
-	//"github.com/gorilla/mux"
+	"net/http" //"github.com/gorilla/mux"
 	//"github.com/gorilla/websocket"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 )
 
@@ -30,9 +30,7 @@ var sugar = logger.Sugar()
 
 //var gameService = game.NewGame()
 
-
 //var chatService = chat.NewChat()
-
 
 func main() {
 
@@ -53,7 +51,6 @@ func main() {
 	}
 
 	defer grpcConn.Close()
-
 
 	//_, err = redis.InitService()
 
@@ -80,8 +77,10 @@ func main() {
 	//siteMux.HandleFunc("/startgame", startGame)
 	siteMux.HandleFunc("/leaderscount", middle.CORSsettings(leaders.LeadersCount))
 	siteMux.HandleFunc("/getAvatar", middle.CORSsettings(profile.GetAvatar))
+	siteMux.Handle("/metrics", promhttp.Handler())
 
-	siteHandler := middle.AccessLogMiddleware(siteMux, sugar)
+	var HitStat = stat.NewPrometheus()
+	siteHandler := middle.AccessLogMiddleware(siteMux, sugar, HitStat)
 
 	port := "8080"
 

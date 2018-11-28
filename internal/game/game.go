@@ -3,6 +3,8 @@ package game
 import (
 	"fmt"
 	"sync"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type Game struct {
@@ -10,15 +12,24 @@ type Game struct {
 	MaxRooms   int
 	Connection chan *Player
 	Mutex      *sync.Mutex
+	RoomStat   prometheus.Gauge
 }
 
 func NewGame() *Game {
+	RoomStat := prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "Simple_Game",
+		Subsystem: "room_stat",
+		Name:      "RoomStat",
+		Help:      "Number of running rooms.",
+	})
+	prometheus.MustRegister(RoomStat)
 	mu := &sync.Mutex{}
 	return &Game{
 		Rooms:      make(map[string]*Room),
 		MaxRooms:   10,
 		Connection: make(chan *Player),
 		Mutex:      mu,
+		RoomStat:   RoomStat,
 	}
 }
 
@@ -60,6 +71,7 @@ func (g *Game) FindRoom() *Room {
 
 	fmt.Println("Game: New room")
 
+	g.RoomStat.Inc()
 	r := NewRoom()
 	go r.RoomManager()
 	go g.FreeRoom(r)
@@ -74,6 +86,7 @@ func (g *Game) FindRoom() *Room {
 func (g *Game) FreeRoom(r *Room) {
 	<-r.FreeRoom
 	delete(g.Rooms, r.ID)
+	g.RoomStat.Dec()
 
 	fmt.Println("Game: delete room ", r.ID)
 }

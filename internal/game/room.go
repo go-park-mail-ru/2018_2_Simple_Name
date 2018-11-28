@@ -115,10 +115,15 @@ Loop:
 				r.Status = "gameover"
 				go r.Stop()
 			} else {
-				go func() {
-					delete(r.Players, p.State.Nickname)
-					r.Broadcast <- &Message{Status: StatusInfo, Room: r.ID, Info: "User " + p.State.Nickname + " deleted from room"}
-				}()
+
+				delete(r.Players, p.State.Nickname)
+				if len(r.Players) == 0 {
+					go r.Stop()
+				} else {
+					go func() {
+						r.Broadcast <- &Message{Status: StatusInfo, Room: r.ID, Info: "User " + p.State.Nickname + " deleted from room"}
+					}()
+				}
 			}
 		case c := <-r.InCommand:
 			fmt.Println("Room Manager " + r.ID + " run perform")
@@ -168,7 +173,9 @@ func (r *Room) Stop() {
 
 	fmt.Println("Room " + r.ID + ": Room Stopping.")
 
-	r.StopRoom <- true
+	if r.Status != StatusWait {
+		r.StopRoom <- true
+	}
 
 	r.Broadcast <- &Message{Status: r.Status, Room: r.ID, Info: "Room Stoped."}
 	time.Sleep(time.Millisecond * 5)

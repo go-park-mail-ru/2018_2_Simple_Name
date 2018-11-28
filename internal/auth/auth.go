@@ -9,11 +9,12 @@ import (
 	"SimpleGame/internal/db/postgres"
 	"SimpleGame/internal/session"
 	"SimpleGame/internal/validation"
-	"github.com/asaskevich/govalidator"
-	"go.uber.org/zap"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/asaskevich/govalidator"
+	"go.uber.org/zap"
 )
 
 var logger, _ = zap.NewProduction()
@@ -58,6 +59,7 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 					"error", err,
 					"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
 				w.WriteHeader(http.StatusInternalServerError)
+
 				return
 			}
 
@@ -69,17 +71,21 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 					"error", err,
 					"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
 				w.WriteHeader(http.StatusInternalServerError)
+
 				return
 			}
 
 			w.WriteHeader(http.StatusCreated)
+
 			return
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
+
 			return
 		}
 	} else {
 		w.WriteHeader(http.StatusBadRequest)
+
 		return
 	}
 }
@@ -88,6 +94,7 @@ func SigninHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodGet {
 		w.WriteHeader(http.StatusInternalServerError)
+
 		return
 	}
 
@@ -100,6 +107,7 @@ func SigninHandler(w http.ResponseWriter, r *http.Request) {
 			"error", err,
 			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
 		w.WriteHeader(http.StatusInternalServerError)
+
 		return
 	}
 
@@ -107,6 +115,7 @@ func SigninHandler(w http.ResponseWriter, r *http.Request) {
 
 	if !validEmail {
 		w.WriteHeader(http.StatusBadRequest)
+
 		return
 	}
 
@@ -114,6 +123,7 @@ func SigninHandler(w http.ResponseWriter, r *http.Request) {
 
 	if existUser == nil {
 		w.WriteHeader(http.StatusNotFound)
+
 		return
 	}
 
@@ -123,6 +133,7 @@ func SigninHandler(w http.ResponseWriter, r *http.Request) {
 			"error", err,
 			"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
 		w.WriteHeader(http.StatusInternalServerError)
+
 		return
 	}
 
@@ -136,17 +147,19 @@ func SigninHandler(w http.ResponseWriter, r *http.Request) {
 				"error", err,
 				"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
 			w.WriteHeader(http.StatusInternalServerError)
+
 			return
 		}
 
 		w.WriteHeader(http.StatusOK)
+
 		return
 	} else {
 		w.WriteHeader(http.StatusBadRequest)
+
 		return
 	}
 }
-
 
 func LogOut(w http.ResponseWriter, r *http.Request) {
 	//sess, err := findSession(r)
@@ -179,8 +192,6 @@ func LogOut(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-
-
 func Islogged(w http.ResponseWriter, r *http.Request) {
 
 	sess, err := session.FindSession(r)
@@ -195,10 +206,12 @@ func Islogged(w http.ResponseWriter, r *http.Request) {
 
 	if sess != nil {
 		w.WriteHeader(http.StatusOK)
+
 		return
 	}
 
 	w.WriteHeader(http.StatusUnauthorized)
+
 	return
 
 	//val := r.Cookies()
@@ -223,4 +236,3 @@ func Islogged(w http.ResponseWriter, r *http.Request) {
 	//
 	//}
 }
-

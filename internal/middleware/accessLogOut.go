@@ -1,25 +1,33 @@
 package middleware
 
 import (
-	"go.uber.org/zap"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap"
 )
 
-func AccessLogMiddleware (mux *http.ServeMux, sugar *zap.SugaredLogger) http.HandlerFunc   {
+func AccessLogMiddleware(mux *http.ServeMux, sugar *zap.SugaredLogger, HitStat *prometheus.GaugeVec) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		begin := time.Now()
 
 		mux.ServeHTTP(w, r)
+
+		HitStat.With(prometheus.Labels{
+			"url":    r.URL.Path,
+			"method": r.Method,
+			"code":   w.Header().Get("Status-Code"),
+		}).Inc()
 
 		sugar.Infow(r.URL.Path,
 			"method", r.Method,
 			"remote addres", r.RemoteAddr,
 			"url", r.URL.Path,
 			"work time", time.Since(begin),
-			"time now", strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()))
-			//"time now", time.Now().UTC())
+			"time now", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
+		//"time now", time.Now().UTC())
 	})
 }
 
