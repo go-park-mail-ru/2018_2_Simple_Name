@@ -3,9 +3,10 @@ package db
 import (
 	//"SimpleGame/2018_2_Simple_Name/internal/models"
 	"SimpleGame/internal/models"
-	"go.uber.org/zap"
 	"strconv"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 var postgres models.UserService = &PostgresUserService{}
@@ -13,7 +14,7 @@ var postgres models.UserService = &PostgresUserService{}
 var logger, _ = zap.NewProduction()
 var sugar = logger.Sugar()
 
-func OpenConn() (error) {
+func OpenConn() error {
 	err := postgres.InitService()
 
 	if err != nil {
@@ -79,7 +80,8 @@ func UpdateUser(existData *models.User, newData *models.User) (*models.User, err
 
 func GetUsersByScore(limit string, offset string) ([]*models.User, error) {
 	var users = make([]*models.User, 0)
-
+	// usr:= new(models.UserList)
+	// usr = postgres.GetUsersByScore(limit, offset)
 	users, err := postgres.GetUsersByScore(limit, offset)
 
 	if err != nil {
@@ -106,5 +108,3 @@ func GetLeadersCount(limit string) (int, error) {
 	return count, nil
 
 }
-
-
