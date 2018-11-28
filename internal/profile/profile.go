@@ -8,7 +8,6 @@ import (
 	"SimpleGame/internal/db/postgres"
 	"SimpleGame/internal/session"
 
-	"encoding/json"
 	"fmt"
 	"github.com/asaskevich/govalidator"
 	"go.uber.org/zap"
@@ -51,7 +50,7 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 			return
 		}
 
-		userInfo, err := json.Marshal(user)
+		userInfo, err := user.MarshalJSON()
 
 		if err != nil {
 			sugar.Errorw("Failed marshal json",
@@ -106,7 +105,7 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 				return
 			}
 
-			resp, _ := json.Marshal(user)
+			resp, _ := user.MarshalJSON()
 
 			w.Write(resp)
 

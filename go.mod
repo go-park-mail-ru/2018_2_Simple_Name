@@ -11,7 +11,7 @@ require (
 	github.com/gorilla/websocket v1.4.0
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/lib/pq v1.0.0
-	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
+	github.com/mailru/easyjson v0.0.0-20180823135443-60711f1a8329
 	github.com/pkg/errors v0.8.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v0.9.1

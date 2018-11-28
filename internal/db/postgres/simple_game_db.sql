@@ -1,4 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS citext;
+
 CREATE TABLE IF NOT EXISTS users(
   email CITEXT PRIMARY KEY,        -- Обязательное поле
   nick CITEXT NOT NULL UNIQUE,     -- Обязательное поле
