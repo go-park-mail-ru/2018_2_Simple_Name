@@ -5,7 +5,6 @@ import (
 	//"SimpleGame/2018_2_Simple_Name/internal/models"
 	"SimpleGame/internal/db/postgres"
 	"SimpleGame/internal/models"
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -64,8 +63,8 @@ func LeadersHandler(w http.ResponseWriter, r *http.Request) {
 		offset = "0"
 	}
 
-	// topp := new(models.UserList)
-	top, err := db.GetUsersByScore(limit, offset)
+	usrList := models.UserList{}
+	usrList, err = db.GetUsersByScore(limit, offset)
 
 	if err != nil {
 		sugar.Errorw("Failed get users",
@@ -75,8 +74,7 @@ func LeadersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := json.Marshal(top)
-	// resp, err := topp.MarshalJSON() //top - массив стуктур, не знаю как переделать на easyjson
+	resp, err := usrList.MarshalJSON() //easyjson
 
 	if err != nil {
 		sugar.Errorw("Failed set JSON",

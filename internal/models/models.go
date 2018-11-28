@@ -1,5 +1,6 @@
 package models
 
+// easyjson:json
 type User struct {
 	Nick     string `json:"nick"`
 	Email    string `json:"email"`
@@ -8,13 +9,15 @@ type User struct {
 	Score    int    `json:"score"`
 }
 
-type UserList []User
+// easyjson:json
+type UserList []*User
 
 //type UserSession struct {
 //	Id    string
 //	Email string
 //}
 
+// easyjson:json
 type DBinfo struct {
 	LeadersCount int `json:"leaderscount"`
 }

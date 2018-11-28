@@ -4,6 +4,7 @@ package models
 
 import (
 	json "encoding/json"
+
 	easyjson "github.com/mailru/easyjson"
 	jlexer "github.com/mailru/easyjson/jlexer"
 	jwriter "github.com/mailru/easyjson/jwriter"
@@ -17,7 +18,85 @@ var (
 	_ easyjson.Marshaler
 )
 
-func easyjsonD2b7633eDecodeSimpleGameInternalModels(in *jlexer.Lexer, out *User) {
+func easyjsonD2b7633eDecodeSimpleGameInternalModels(in *jlexer.Lexer, out *UserList) {
+	isTopLevel := in.IsStart()
+	if in.IsNull() {
+		in.Skip()
+		*out = nil
+	} else {
+		in.Delim('[')
+		if *out == nil {
+			if !in.IsDelim(']') {
+				*out = make(UserList, 0, 8)
+			} else {
+				*out = UserList{}
+			}
+		} else {
+			*out = (*out)[:0]
+		}
+		for !in.IsDelim(']') {
+			var v1 *User
+			if in.IsNull() {
+				in.Skip()
+				v1 = nil
+			} else {
+				if v1 == nil {
+					v1 = new(User)
+				}
+				(*v1).UnmarshalEasyJSON(in)
+			}
+			*out = append(*out, v1)
+			in.WantComma()
+		}
+		in.Delim(']')
+	}
+	if isTopLevel {
+		in.Consumed()
+	}
+}
+func easyjsonD2b7633eEncodeSimpleGameInternalModels(out *jwriter.Writer, in UserList) {
+	if in == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
+		out.RawString("null")
+	} else {
+		out.RawByte('[')
+		for v2, v3 := range in {
+			if v2 > 0 {
+				out.RawByte(',')
+			}
+			if v3 == nil {
+				out.RawString("null")
+			} else {
+				(*v3).MarshalEasyJSON(out)
+			}
+		}
+		out.RawByte(']')
+	}
+}
+
+// MarshalJSON supports json.Marshaler interface
+func (v UserList) MarshalJSON() ([]byte, error) {
+	w := jwriter.Writer{}
+	easyjsonD2b7633eEncodeSimpleGameInternalModels(&w, v)
+	return w.Buffer.BuildBytes(), w.Error
+}
+
+// MarshalEasyJSON supports easyjson.Marshaler interface
+func (v UserList) MarshalEasyJSON(w *jwriter.Writer) {
+	easyjsonD2b7633eEncodeSimpleGameInternalModels(w, v)
+}
+
+// UnmarshalJSON supports json.Unmarshaler interface
+func (v *UserList) UnmarshalJSON(data []byte) error {
+	r := jlexer.Lexer{Data: data}
+	easyjsonD2b7633eDecodeSimpleGameInternalModels(&r, v)
+	return r.Error()
+}
+
+// UnmarshalEasyJSON supports easyjson.Unmarshaler interface
+func (v *UserList) UnmarshalEasyJSON(l *jlexer.Lexer) {
+	easyjsonD2b7633eDecodeSimpleGameInternalModels(l, v)
+}
+func easyjsonD2b7633eDecodeSimpleGameInternalModels1(in *jlexer.Lexer, out *User) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -54,7 +133,7 @@ func easyjsonD2b7633eDecodeSimpleGameInternalModels(in *jlexer.Lexer, out *User)
 		in.Consumed()
 	}
 }
-func easyjsonD2b7633eEncodeSimpleGameInternalModels(out *jwriter.Writer, in User) {
+func easyjsonD2b7633eEncodeSimpleGameInternalModels1(out *jwriter.Writer, in User) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -104,27 +183,27 @@ func easyjsonD2b7633eEncodeSimpleGameInternalModels(out *jwriter.Writer, in User
 // MarshalJSON supports json.Marshaler interface
 func (v User) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonD2b7633eEncodeSimpleGameInternalModels(&w, v)
+	easyjsonD2b7633eEncodeSimpleGameInternalModels1(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v User) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonD2b7633eEncodeSimpleGameInternalModels(w, v)
+	easyjsonD2b7633eEncodeSimpleGameInternalModels1(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *User) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonD2b7633eDecodeSimpleGameInternalModels(&r, v)
+	easyjsonD2b7633eDecodeSimpleGameInternalModels1(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *User) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonD2b7633eDecodeSimpleGameInternalModels(l, v)
+	easyjsonD2b7633eDecodeSimpleGameInternalModels1(l, v)
 }
-func easyjsonD2b7633eDecodeSimpleGameInternalModels1(in *jlexer.Lexer, out *DBinfo) {
+func easyjsonD2b7633eDecodeSimpleGameInternalModels2(in *jlexer.Lexer, out *DBinfo) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -155,7 +234,7 @@ func easyjsonD2b7633eDecodeSimpleGameInternalModels1(in *jlexer.Lexer, out *DBin
 		in.Consumed()
 	}
 }
-func easyjsonD2b7633eEncodeSimpleGameInternalModels1(out *jwriter.Writer, in DBinfo) {
+func easyjsonD2b7633eEncodeSimpleGameInternalModels2(out *jwriter.Writer, in DBinfo) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -175,23 +254,23 @@ func easyjsonD2b7633eEncodeSimpleGameInternalModels1(out *jwriter.Writer, in DBi
 // MarshalJSON supports json.Marshaler interface
 func (v DBinfo) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonD2b7633eEncodeSimpleGameInternalModels1(&w, v)
+	easyjsonD2b7633eEncodeSimpleGameInternalModels2(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v DBinfo) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonD2b7633eEncodeSimpleGameInternalModels1(w, v)
+	easyjsonD2b7633eEncodeSimpleGameInternalModels2(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *DBinfo) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonD2b7633eDecodeSimpleGameInternalModels1(&r, v)
+	easyjsonD2b7633eDecodeSimpleGameInternalModels2(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *DBinfo) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonD2b7633eDecodeSimpleGameInternalModels1(l, v)
+	easyjsonD2b7633eDecodeSimpleGameInternalModels2(l, v)
 }

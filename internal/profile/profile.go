@@ -36,12 +36,12 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 	}
 
 	if sess == nil {
+		fmt.Println("Anathorized")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
 	if r.Method == http.MethodGet {
-		fmt.Println(sess.Email)
 		user, err := db.GetUser(sess.Email)
 
 		if err != nil { // Полная проверка ошибки?
@@ -49,7 +49,7 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-
+		
 		userInfo, err := user.MarshalJSON()
 
 		if err != nil {
@@ -156,14 +156,13 @@ func UploadFileReq(fileName string, r *http.Request) error {
 	}
 	defer file.Close()
 
-	fmt.Println(fileName)
-	fmt.Println(filepath.Join(("/media")))
+	// fmt.Println(fileName)
+	// fmt.Println(filepath.Join(("/media")))
 
-	dst, err := os.Create(filepath.Join("./media", fileName))
+	dst, err := os.Create(filepath.Join("internal/media", fileName))
 
 	if err != nil {
-		fmt.Println("2")
-
+		fmt.Println("Error")
 		return err
 	}
 
@@ -187,7 +186,10 @@ func GetAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, err := os.Open("./media/" + sess.Email)
+	file, err := os.Open(filepath.Join("internal/media", sess.Email))
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 
 	//res, _ := ioutil.ReadAll(file)
 
