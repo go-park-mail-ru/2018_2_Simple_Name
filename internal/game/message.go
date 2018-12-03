@@ -22,9 +22,9 @@ type IncommingMessage struct {
 	Info          string   `json:"info"`
 	ClickPos      Position `json:"clickpos"`
 	CreateMobType string   `json:"createmobtype"`
-	OwnTarget     Target   `json:"owntarget"`
-	RivalTarget   Target   `json:"rivaltarget"`
-	Area          Area     `json:"area"`
+	// OwnTarget     Target   `json:"owntarget"`
+	// RivalTarget   Target   `json:"rivaltarget"`
+	// Area          Area     `json:"area"`
 }
 
 type PrivateMessage struct {

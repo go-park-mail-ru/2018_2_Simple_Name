@@ -35,16 +35,16 @@ func CreateMob(Mobtype string, Pos Position) *Mob {
 		mob = Mob{
 			ID:    id,
 			Type:  "mob1",
-			HP:    3,
-			Speed: 1,
+			HP:    5,
+			Speed: 2,
 			Force: 10,
 			Area:  Area{Width: 50, Height: 50},
 			Pos: Position{
 				X: Pos.X,
 				Y: Pos.Y,
 			},
-			KillPoints: 2,
-			Price:      20,
+			KillPoints: 20,
+			Price:      30,
 			Status:     "run",
 		}
 	case "mob2":
@@ -52,24 +52,7 @@ func CreateMob(Mobtype string, Pos Position) *Mob {
 		mob = Mob{
 			ID:    id,
 			Type:  "mob2",
-			HP:    2,
-			Speed: 2,
-			Force: 5,
-			Area:  Area{Width: 50, Height: 50},
-			Pos: Position{
-				X: Pos.X,
-				Y: Pos.Y,
-			},
-			KillPoints: 4,
-			Price:      30,
-			Status:     "run",
-		}
-	case "mob3":
-		id := uuid.NewV4().String()
-		mob = Mob{
-			ID:    id,
-			Type:  "mob3",
-			HP:    1,
+			HP:    3,
 			Speed: 3,
 			Force: 5,
 			Area:  Area{Width: 50, Height: 50},
@@ -78,6 +61,23 @@ func CreateMob(Mobtype string, Pos Position) *Mob {
 				Y: Pos.Y,
 			},
 			KillPoints: 10,
+			Price:      10,
+			Status:     "run",
+		}
+	case "mob3":
+		id := uuid.NewV4().String()
+		mob = Mob{
+			ID:    id,
+			Type:  "mob3",
+			HP:    10,
+			Speed: 1,
+			Force: 20,
+			Area:  Area{Width: 50, Height: 50},
+			Pos: Position{
+				X: Pos.X,
+				Y: Pos.Y,
+			},
+			KillPoints: 50,
 			Price:      50,
 			Status:     "run",
 		}
@@ -97,15 +97,15 @@ func CheckMobType(Mobtype string) bool {
 }
 
 func (mob *Mob) CheckKillPos(clickpos Position) bool {
-	xcheck := clickpos.X <= mob.Pos.X+mob.Area.Width && clickpos.X >= mob.Pos.X-mob.Area.Width
-	ycheck := clickpos.Y <= mob.Pos.Y+mob.Area.Height && clickpos.Y >= mob.Pos.Y-mob.Area.Height
+	xcheck := clickpos.X <= mob.Pos.X+mob.Area.Width/2 && clickpos.X >= mob.Pos.X-mob.Area.Width/2
+	ycheck := clickpos.Y <= mob.Pos.Y+mob.Area.Height/2 && clickpos.Y >= mob.Pos.Y-mob.Area.Height/2
 	if xcheck && ycheck {
 		return true
 	}
 	return false
 }
 
-func (mob *Mob) CheckTargetPos(tar *Target) bool {
+func (mob *Mob) CheckTargetPos(tar Target) bool {
 
 	xcheck := mob.Pos.X+mob.Area.Width/2 >= tar.Pos.X-tar.Area.Width/2 && mob.Pos.X <= tar.Pos.X+tar.Area.Width/2
 	ycheck := mob.Pos.Y+mob.Area.Width/2 >= tar.Pos.Y-tar.Area.Height/2 && mob.Pos.Y <= tar.Pos.Y+tar.Area.Height/2
@@ -115,13 +115,35 @@ func (mob *Mob) CheckTargetPos(tar *Target) bool {
 	return false
 }
 
-func (m *Mob) ProgressState(tar *Target, area *Area) {
+func (m *Mob) ProgressState(tar Target, area Area) {
 	// fmt.Println("old x:", m.Pos.X, " y: ", m.Pos.Y)
 	step := 2.
-	ky := (tar.Pos.Y - m.Pos.Y) / math.Abs(tar.Pos.X-m.Pos.X)
-	m.Pos.Y += ky * step
-	kx := (tar.Pos.X - m.Pos.X) / math.Abs(tar.Pos.Y-m.Pos.Y)
-	m.Pos.X += kx * step
+	kx := 0.
+	ky := 0.
+
+	if tar.Pos.X-m.Pos.X != 0 {
+		ky = (tar.Pos.Y - m.Pos.Y) / math.Abs(tar.Pos.X-m.Pos.X)
+	} else {
+		ky = tar.Pos.Y - m.Pos.Y
+	}
+	if ky > 1 {
+		ky = ky / math.Abs(ky)
+	}
+	stepY := ky * step * float64(m.Speed)
+
+	m.Pos.Y += stepY
+
+	if tar.Pos.Y-m.Pos.Y != 0 {
+		kx = (tar.Pos.X - m.Pos.X) / math.Abs(tar.Pos.Y-m.Pos.Y)
+	} else {
+		kx = tar.Pos.X - m.Pos.X
+	}
+	if kx > 1 {
+		kx = kx / math.Abs(kx)
+	}
+
+	stepX := kx * step * float64(m.Speed)
+	m.Pos.X += stepX
 	// fmt.Println("new x:", m.Pos.X, " y: ", m.Pos.Y)
 }
 

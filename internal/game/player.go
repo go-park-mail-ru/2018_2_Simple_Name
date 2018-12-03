@@ -12,6 +12,7 @@ type PlayerState struct {
 	HP       int             `json:"hp"`
 	Mobs     map[string]*Mob `json:"mobs"`
 	Points   int             `json:"points"`
+	AllDead  bool            `json:"-"`
 }
 
 type Player struct {
@@ -85,7 +86,6 @@ func (p *Player) Send(msg *Message) {
 	}
 }
 
-
 func (p *Player) AddMobCommand(Mobtype string) {
 
 	fmt.Println("Player " + p.State.Nickname + ": Perform command addmob " + Mobtype)
@@ -103,7 +103,6 @@ func (p *Player) AddMobCommand(Mobtype string) {
 	}
 }
 
-
 func (p *Player) KillMobCommand(pos Position) int {
 
 	fmt.Println("Player " + p.State.Nickname + ": Perform command killmob.")
@@ -112,8 +111,11 @@ func (p *Player) KillMobCommand(pos Position) int {
 	for _, mob := range p.State.Mobs {
 		if mob.Status != "dead" {
 			if mob.CheckKillPos(pos) {
-				killPoints += mob.KillPoints
-				mob.SetDead()
+				mob.HP--
+				if mob.HP == 0 {
+					killPoints += mob.KillPoints
+					mob.SetDead()
+				}
 			}
 		}
 	}
@@ -125,7 +127,7 @@ func (p *Player) KillMobCommand(pos Position) int {
 
 func (p *Player) ProgressState() int {
 	// fmt.Println("Player " + p.State.Nickname + ": ProgressState.")
-
+	isDead := true
 	hpAttack := 0
 	for _, mob := range p.State.Mobs {
 		switch mob.Status {
@@ -137,7 +139,11 @@ func (p *Player) ProgressState() int {
 		case "attack":
 			hpAttack += mob.Force
 		}
+		if mob.Status != "dead" {
+			isDead = false
+		}
 	}
+	p.State.AllDead = isDead
 	return hpAttack
 }
 
@@ -156,10 +162,14 @@ func (p *Player) CheckZHealth() bool {
 	return p.State.HP == 0
 }
 
-func GetInitPos(target *Target, area *Area) Position {
+func (p *Player) CheckNoMobsNoMoney() bool {
+	return p.State.AllDead && p.State.Points == 0
+}
+
+func GetInitPos(target Target, area Area) Position {
 	y := rand.Intn(int(area.Height))
 	return Position{
-		X: target.Pos.X - 25,
+		X: target.Pos.X + target.Area.Width/2 + 25,
 		Y: float64(y),
 	}
 }

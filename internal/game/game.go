@@ -49,8 +49,8 @@ func (g *Game) ProcessConn(p *Player) {
 		return
 	}
 	p.Room = r
-	r.Register <- p
 	r.InitPlayer(p)
+	r.Register <- p
 }
 
 func (g *Game) FindRoom() *Room {

@@ -16,9 +16,9 @@ type Room struct {
 	ID                string
 	Ticker            *time.Ticker
 	Players           map[string]*Player
-	OwnTargetParams   *Target
-	RivalTargetParams *Target
-	AreaParams        *Area
+	OwnTargetParams   Target
+	RivalTargetParams Target
+	AreaParams        Area
 	MaxPlayers        int
 	Register          chan *Player
 	Unregister        chan *Player
@@ -47,18 +47,21 @@ type GameState map[string]PlayerState
 func NewRoom() *Room {
 	id := uuid.NewV4().String()
 	return &Room{
-		ID:          id,
-		MaxPlayers:  2,
-		Players:     make(map[string]*Player),
-		Register:    make(chan *Player),
-		Unregister:  make(chan *Player),
-		Message:     make(chan *PrivateMessage),
-		Broadcast:   make(chan *Message),
-		InCommand:   make(chan *IncommingCommand),
-		Status:      "wait",
-		FreeManager: make(chan bool),
-		FreeRoom:    make(chan bool),
-		StopRoom:    make(chan bool),
+		ID:                id,
+		MaxPlayers:        2,
+		Players:           make(map[string]*Player),
+		Register:          make(chan *Player),
+		Unregister:        make(chan *Player),
+		Message:           make(chan *PrivateMessage),
+		Broadcast:         make(chan *Message),
+		InCommand:         make(chan *IncommingCommand),
+		Status:            "wait",
+		FreeManager:       make(chan bool),
+		FreeRoom:          make(chan bool),
+		StopRoom:          make(chan bool),
+		OwnTargetParams:   Target{Pos: Position{X: 75, Y: 300}, Area: Area{Height: 150, Width: 150}},
+		RivalTargetParams: Target{Pos: Position{X: 1125, Y: 300}, Area: Area{Height: 150, Width: 150}},
+		AreaParams:        Area{Height: 600, Width: 1200},
 	}
 }
 
@@ -74,9 +77,11 @@ Loop:
 			// fmt.Println("Room Manager " + r.ID + ": Broadcast")
 
 			for _, p := range r.Players {
-				if m.Status == StatusStartGame || m.Status == StatusGame || m.Status == StatusGameOver {
-					m.OwnState = p.State
-					m.RivalState = r.GetRival(p).State
+				if m.Status != StatusWait && m.Status != StatusInfo {
+					if r.Status != StatusError {
+						m.OwnState = p.State
+						m.RivalState = r.GetRival(p).State
+					}
 				}
 				p.Send(m)
 			}
@@ -110,9 +115,9 @@ Loop:
 		case p := <-r.Unregister:
 
 			fmt.Println("Room " + r.ID + ": unregister user " + p.State.Nickname)
-
-			if r.Status == StatusGame || r.Status == StatusStartGame || len(r.Players) == 0 {
-				r.Status = "gameover"
+			if r.Status == StatusGame || r.Status == StatusStartGame {
+				r.Status = StatusError
+				delete(r.Players, p.State.Nickname)
 				go r.Stop()
 			} else {
 
@@ -142,8 +147,10 @@ func (r *Room) Run() {
 
 	fmt.Println("Room " + r.ID + " is running")
 
-	r.Ticker = time.NewTicker(300 * time.Millisecond)
-	r.Broadcast <- &Message{Status: StatusStartGame, Room: r.ID, Info: "Starting of Room"}
+	r.Ticker = time.NewTicker(100 * time.Millisecond)
+	go func() {
+		r.Broadcast <- &Message{Status: StatusStartGame, Room: r.ID, Info: "Starting of Room"}
+	}()
 Loop:
 	for {
 		select {
@@ -158,7 +165,9 @@ Loop:
 				r.Ticker.Stop()
 				go r.Stop()
 			} else {
-				r.Broadcast <- &Message{Status: StatusGame, Room: r.ID}
+				go func() {
+					r.Broadcast <- &Message{Status: StatusGame, Room: r.ID}
+				}()
 			}
 		case <-r.StopRoom:
 
@@ -178,11 +187,11 @@ func (r *Room) Stop() {
 	}
 
 	r.Broadcast <- &Message{Status: r.Status, Room: r.ID, Info: "Room Stoped."}
-	time.Sleep(time.Millisecond * 5)
+	time.Sleep(time.Millisecond * 100)
 
 	for id, p := range r.Players {
-		delete(r.Players, id)
 		p.Listenflag <- false
+		delete(r.Players, id)
 	}
 	time.Sleep(time.Millisecond * 2)
 	r.FreeManager <- true
@@ -190,7 +199,7 @@ func (r *Room) Stop() {
 	time.Sleep(time.Millisecond * 2)
 	r.FreeRoom <- true
 
-	fmt.Println("Room " + r.ID + ": Room Stoped.")
+	fmt.Println("Room " + r.ID + ": Room Stoped. Your rival ran away!")
 }
 
 func (r *Room) ProgressState() bool {
@@ -198,6 +207,7 @@ func (r *Room) ProgressState() bool {
 	// fmt.Println("Room " + r.ID + ": ProgressState.")
 
 	keyover := false
+	keyNMNM := true
 	for _, player := range r.Players {
 		hpAttack := player.ProgressState()
 		rival := r.GetRival(player)
@@ -205,6 +215,15 @@ func (r *Room) ProgressState() bool {
 		if rival.CheckZHealth() {
 			keyover = true
 		}
+		if !player.CheckNoMobsNoMoney() {
+			keyNMNM = false
+		}
+	}
+	if keyNMNM {
+		for _, player := range r.Players {
+			player.State.HP = 0
+		}
+		keyover = true
 	}
 	return keyover
 }
@@ -220,15 +239,6 @@ func (r *Room) PerformCommand(c *IncommingCommand) {
 		rival := r.GetRival(r.Players[c.Nickname])
 		killPoints := rival.KillMobCommand(c.InMsg.ClickPos)
 		r.Players[c.Nickname].IncreasePoints(killPoints)
-	case CommandUpdate:
-		ownarget := c.InMsg.OwnTarget
-		r.OwnTargetParams = &ownarget
-
-		rivalarget := c.InMsg.RivalTarget
-		r.RivalTargetParams = &rivalarget
-
-		area := c.InMsg.Area
-		r.AreaParams = &area
 	}
 }
 
