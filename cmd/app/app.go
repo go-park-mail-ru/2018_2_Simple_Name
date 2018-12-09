@@ -1,6 +1,7 @@
 package main
 
 import (
+	"SimpleGame/2018_2_Simple_Name/internal/db/postgres"
 	//"SimpleGame/2018_2_Simple_Name/internal/db/postgres"
 	//"SimpleGame/2018_2_Simple_Name/internal/auth"
 	//"SimpleGame/2018_2_Simple_Name/internal/db/postgres"
@@ -71,15 +72,15 @@ func main() {
 	//go gameService.Run()
 
 	siteMux := http.NewServeMux()
-	siteMux.HandleFunc("/signup", middle.CORSsettings(auth.SignupHandler))
-	siteMux.HandleFunc("/signin", middle.CORSsettings(auth.SigninHandler))
-	siteMux.HandleFunc("/profile", middle.CORSsettings(profile.ProfileHandler))
-	siteMux.HandleFunc("/leaders", middle.CORSsettings(leaders.LeadersHandler))
-	siteMux.HandleFunc("/islogged", middle.CORSsettings(auth.Islogged))
-	siteMux.HandleFunc("/logout", middle.CORSsettings(auth.LogOut))
+	siteMux.HandleFunc("/api/signup", middle.CORSsettings(auth.SignupHandler))
+	siteMux.HandleFunc("/api/signin", middle.CORSsettings(auth.SigninHandler))
+	siteMux.HandleFunc("/api/profile", middle.CORSsettings(profile.ProfileHandler))
+	siteMux.HandleFunc("/api/leaders", middle.CORSsettings(leaders.LeadersHandler))
+	siteMux.HandleFunc("/api/islogged", middle.CORSsettings(auth.Islogged))
+	siteMux.HandleFunc("//apilogout", middle.CORSsettings(auth.LogOut))
 	//siteMux.HandleFunc("/startgame", startGame)
-	siteMux.HandleFunc("/leaderscount", middle.CORSsettings(leaders.LeadersCount))
-	siteMux.HandleFunc("/getAvatar", middle.CORSsettings(profile.GetAvatar))
+	siteMux.HandleFunc("/api/leaderscount", middle.CORSsettings(leaders.LeadersCount))
+	siteMux.HandleFunc("/api/getAvatar", middle.CORSsettings(profile.GetAvatar))
 
 	siteHandler := middle.AccessLogMiddleware(siteMux, sugar)
 
