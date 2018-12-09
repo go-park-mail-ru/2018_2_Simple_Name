@@ -77,7 +77,7 @@ func main() {
 	siteMux.HandleFunc("/api/profile", middle.CORSsettings(profile.ProfileHandler))
 	siteMux.HandleFunc("/api/leaders", middle.CORSsettings(leaders.LeadersHandler))
 	siteMux.HandleFunc("/api/islogged", middle.CORSsettings(auth.Islogged))
-	siteMux.HandleFunc("//apilogout", middle.CORSsettings(auth.LogOut))
+	siteMux.HandleFunc("/api/logout", middle.CORSsettings(auth.LogOut))
 	//siteMux.HandleFunc("/startgame", startGame)
 	siteMux.HandleFunc("/api/leaderscount", middle.CORSsettings(leaders.LeadersCount))
 	siteMux.HandleFunc("/api/getAvatar", middle.CORSsettings(profile.GetAvatar))
