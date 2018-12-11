@@ -1,7 +1,6 @@
 package main
 
 import (
-	"SimpleGame/2018_2_Simple_Name/internal/db/postgres"
 	//"SimpleGame/2018_2_Simple_Name/internal/db/postgres"
 	//"SimpleGame/2018_2_Simple_Name/internal/auth"
 	//"SimpleGame/2018_2_Simple_Name/internal/db/postgres"
