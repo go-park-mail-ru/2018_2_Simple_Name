@@ -1,6 +1,7 @@
 package main
 
 import (
+	"SimpleGame/2018_2_Simple_Name/internal/db/postgres"
 	//"SimpleGame/2018_2_Simple_Name/internal/db/postgres"
 	//"SimpleGame/2018_2_Simple_Name/internal/db/postgres"
 	//"SimpleGame/2018_2_Simple_Name/internal/session"
@@ -45,8 +46,8 @@ func main() {
 
 	go gameService.Run()
 
-	mux.HandleFunc("/startgame", startGame)
-	mux.Handle("/metrics", promhttp.Handler())
+	mux.HandleFunc("/api/startgame", startGame)
+	mux.Handle("/api/metrics", promhttp.Handler())
 
 	fmt.Println("Starting game server at :8082")
 
