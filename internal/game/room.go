@@ -29,6 +29,7 @@ type Room struct {
 	FreeManager       chan bool
 	FreeRoom          chan bool
 	StopRoom          chan bool
+	SingleFlag        bool
 }
 
 type IncommingCommand struct {
@@ -44,7 +45,7 @@ const (
 
 type GameState map[string]PlayerState
 
-func NewRoom() *Room {
+func NewRoom(SingleFlag bool) *Room {
 	id := uuid.NewV4().String()
 	return &Room{
 		ID:                id,
@@ -62,6 +63,7 @@ func NewRoom() *Room {
 		OwnTargetParams:   Target{Pos: Position{X: 75, Y: 300}, Area: Area{Height: 150, Width: 150}},
 		RivalTargetParams: Target{Pos: Position{X: 1125, Y: 300}, Area: Area{Height: 150, Width: 150}},
 		AreaParams:        Area{Height: 600, Width: 1200},
+		SingleFlag:        SingleFlag,
 	}
 }
 
@@ -77,20 +79,23 @@ Loop:
 			// fmt.Println("Room Manager " + r.ID + ": Broadcast")
 
 			for _, p := range r.Players {
-				if m.Status != StatusWait && m.Status != StatusInfo {
-					if r.Status != StatusError {
-						m.OwnState = p.State
-						m.RivalState = r.GetRival(p).State
+				if !p.BotFlag {
+					if m.Status != StatusWait && m.Status != StatusInfo {
+						if r.Status != StatusError {
+							m.OwnState = p.State
+							m.RivalState = r.GetRival(p).State
+						}
 					}
+					p.Send(m)
 				}
-				p.Send(m)
 			}
 
 		case m := <-r.Message:
 
 			fmt.Println("Room Manager " + r.ID + "send message")
-
-			m.Player.Send(m.Msg)
+			if !m.Player.BotFlag {
+				m.Player.Send(m.Msg)
+			}
 
 		case p := <-r.Register:
 
@@ -102,6 +107,11 @@ Loop:
 				r.Broadcast <- &Message{Status: StatusInfo, Room: r.ID, Info: "User " + p.State.Nickname + " entered to room"}
 			}()
 
+			if r.SingleFlag {
+				p2 := GetBot()
+				r.InitPlayer(p2)
+				r.Players[p2.State.Nickname] = p2
+			}
 			if len(r.Players) == r.MaxPlayers {
 				r.Status = StatusGame
 				go r.Run()
@@ -122,7 +132,7 @@ Loop:
 			} else {
 
 				delete(r.Players, p.State.Nickname)
-				if len(r.Players) == 0 {
+				if len(r.Players) == 0 || r.SingleFlag {
 					go r.Stop()
 				} else {
 					go func() {

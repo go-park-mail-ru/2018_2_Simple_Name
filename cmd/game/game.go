@@ -100,8 +100,12 @@ func startGame(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
-	player := game.NewPlayer(user.Nick, conn)
+	q := r.URL.Query()
+	SingleFlag := false
+	if q["single"] = true{
+		SingleFlag = true
+	}
+	player := game.NewPlayer(user.Nick, conn,SingleFlag)
 
 	gameService.Connection <- player
 }

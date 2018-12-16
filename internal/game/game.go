@@ -42,7 +42,7 @@ func (g *Game) Run() {
 
 func (g *Game) ProcessConn(p *Player) {
 	fmt.Println("Game: Process connection")
-	r := g.FindRoom()
+	r := g.FindRoom(p.SingleFlag)
 	if r == nil {
 		p.Conn.WriteJSON(Message{Status: StatusError, Info: "All rooms are busy"})
 		p.Conn.Close()
@@ -53,18 +53,19 @@ func (g *Game) ProcessConn(p *Player) {
 	r.Register <- p
 }
 
-func (g *Game) FindRoom() *Room {
+func (g *Game) FindRoom(SingleFlag bool) *Room {
 	fmt.Println("Game: Find room")
 
-	for _, r := range g.Rooms {
-		fmt.Println("Game: in for")
+	if !SingleFlag {
+		for _, r := range g.Rooms {
+			fmt.Println("Game: in for")
 
-		if len(r.Players) < r.MaxPlayers {
-			return r
+			if len(r.Players) < r.MaxPlayers && !r.SingleFlag {
+				return r
+			}
 		}
+		fmt.Println("Game: after for")
 	}
-	fmt.Println("Game: after for")
-
 	if len(g.Rooms) >= g.MaxRooms {
 		return nil
 	}
@@ -72,7 +73,7 @@ func (g *Game) FindRoom() *Room {
 	fmt.Println("Game: New room")
 
 	g.RoomStat.Inc()
-	r := NewRoom()
+	r := NewRoom(SingleFlag)
 	go r.RoomManager()
 	go g.FreeRoom(r)
 

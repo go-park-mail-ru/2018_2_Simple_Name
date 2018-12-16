@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"math/rand"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -18,24 +19,36 @@ type PlayerState struct {
 type Player struct {
 	Room       *Room
 	Conn       *websocket.Conn
+	SingleFlag bool
+	BotFlag    bool
 	State      PlayerState
 	Message    chan *IncommingMessage
 	Listenflag chan bool
+	T          *time.Timer
 }
 
-func NewPlayer(Nickname string, Conn *websocket.Conn) *Player {
+func NewPlayer(Nickname string, Conn *websocket.Conn, SingleFlag bool) *Player {
 	return &Player{
 		State:      PlayerState{Nickname: Nickname, Mobs: make(map[string]*Mob)},
 		Conn:       Conn,
+		SingleFlag: SingleFlag,
 		Listenflag: make(chan bool),
 		Message:    make(chan *IncommingMessage),
+		BotFlag:    false,
 	}
 }
-
+func GetBot() *Player {
+	return &Player{
+		State:      PlayerState{Nickname: "Gennadiy", Mobs: make(map[string]*Mob)},
+		SingleFlag: true,
+		Listenflag: make(chan bool),
+		Message:    make(chan *IncommingMessage),
+		BotFlag:    true,
+	}
+}
 func (p *Player) Listen() {
 
 	fmt.Println("Player " + p.State.Nickname + ": Start listening.")
-
 Loop:
 	for {
 		select {
@@ -47,26 +60,72 @@ Loop:
 		case flag := <-p.Listenflag:
 			switch flag {
 			case false:
-				p.Room.Unregister <- p
-				p.Conn.Close()
+				if !p.BotFlag {
+					p.Room.Unregister <- p
+					p.Conn.Close()
+				} else {
+					p.T.Stop()
+				}
 				break Loop
 			case true:
 
 				fmt.Println("Player " + p.State.Nickname + ": Wait incomming message.")
 
-				go func() {
-					msg := &IncommingMessage{}
-					err := p.Conn.ReadJSON(msg)
-					if websocket.IsUnexpectedCloseError(err) {
-						p.Listenflag <- false
-						return
-					}
+				if !p.BotFlag {
+					go func() {
+						msg := &IncommingMessage{}
+						err := p.Conn.ReadJSON(msg)
+						if websocket.IsUnexpectedCloseError(err) {
+							p.Listenflag <- false
+							return
+						}
 
-					fmt.Println("Player " + p.State.Nickname + ": Get incomming message.")
+						fmt.Println("Player " + p.State.Nickname + ": Get incomming message.")
 
-					p.Message <- msg
-					p.Listenflag <- true
-				}()
+						p.Message <- msg
+						p.Listenflag <- true
+					}()
+				} else {
+					p.T = time.AfterFunc(2*time.Second, func() {
+						key := rand.Int()
+						var msg *IncommingMessage
+						switch key % 3 {
+						case 0:
+							pos_key := rand.Int()
+							var pos Position
+							switch pos_key % 3 {
+							case 0:
+								rival := p.Room.GetRival(p)
+								mobs := rival.State.Mobs
+								if len(mobs) != 0 {
+									for _, mob := range mobs {
+										pos = mob.Pos
+										break
+									}
+									msg = &IncommingMessage{Command: CommandKillMob, ClickPos: pos}
+								} else {
+									msg = &IncommingMessage{}
+								}
+							case 2:
+								pos = Position{X: float64(rand.Intn(int(p.Room.AreaParams.Width))), Y: float64(rand.Intn(int(p.Room.AreaParams.Height)))}
+								msg = &IncommingMessage{Command: CommandKillMob, ClickPos: pos}
+							}
+						case 1:
+							mob_key := rand.Int()
+							switch mob_key % 3 {
+							case 0:
+								msg = &IncommingMessage{Command: CommandAddMob, CreateMobType: "mob1"}
+							case 1:
+								msg = &IncommingMessage{Command: CommandAddMob, CreateMobType: "mob2"}
+							case 2:
+								msg = &IncommingMessage{Command: CommandAddMob, CreateMobType: "mob3"}
+							}
+						}
+
+						p.Message <- msg
+						p.Listenflag <- true
+					})
+				}
 			}
 		}
 	}
