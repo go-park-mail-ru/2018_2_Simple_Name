@@ -1,7 +1,7 @@
 package main
 
 import (
-	"SimpleGame/2018_2_Simple_Name/internal/db/postgres"
+	// "SimpleGame/2018_2_Simple_Name/internal/db/postgres"
 	//"SimpleGame/2018_2_Simple_Name/internal/db/postgres"
 	//"SimpleGame/2018_2_Simple_Name/internal/db/postgres"
 	//"SimpleGame/2018_2_Simple_Name/internal/session"
@@ -102,7 +102,7 @@ func startGame(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	SingleFlag := false
-	if q["single"] = true{
+	if q.Get("single") == "true"{
 		SingleFlag = true
 	}
 	player := game.NewPlayer(user.Nick, conn,SingleFlag)
