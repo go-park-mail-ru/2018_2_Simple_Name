@@ -53,7 +53,7 @@ Loop:
 	for {
 		select {
 		case msg := <-p.Message: //читает когда приходит сообщение, асинхронно
-
+			fmt.Println(*msg)
 			fmt.Println("Player " + p.State.Nickname + ": Translate message to room.")
 
 			p.Room.InCommand <- &IncommingCommand{InMsg: msg, Nickname: p.State.Nickname}
@@ -88,13 +88,16 @@ Loop:
 				} else {
 					p.T = time.AfterFunc(2*time.Second, func() {
 						key := rand.Int()
-						var msg *IncommingMessage
+						fmt.Println("Random key", key%3)
+						msg := &IncommingMessage{}
 						switch key % 3 {
 						case 0:
+							fmt.Println("Gennadiy killing! ")
 							pos_key := rand.Int()
 							var pos Position
 							switch pos_key % 3 {
 							case 0:
+								fmt.Println("Your mob ")
 								rival := p.Room.GetRival(p)
 								mobs := rival.State.Mobs
 								if len(mobs) != 0 {
@@ -102,28 +105,51 @@ Loop:
 										pos = mob.Pos
 										break
 									}
-									msg = &IncommingMessage{Command: CommandKillMob, ClickPos: pos}
+									msg = new(IncommingMessage)
+									msg.Command = CommandKillMob
+									msg.ClickPos = pos
 								} else {
-									msg = &IncommingMessage{}
+									fmt.Println("No rival mob ")
+									p.Listenflag <- true
+									return
 								}
 							case 2:
+								fmt.Println("Empty area")
 								pos = Position{X: float64(rand.Intn(int(p.Room.AreaParams.Width))), Y: float64(rand.Intn(int(p.Room.AreaParams.Height)))}
-								msg = &IncommingMessage{Command: CommandKillMob, ClickPos: pos}
+								msg = new(IncommingMessage)
+								msg.Command = CommandKillMob
+								msg.ClickPos = pos
+							default:
+								fmt.Println("Gennadiy do not want to kill ")
+								p.Listenflag <- true
+								return
 							}
 						case 1:
+							fmt.Println("Gennadiy create mob")
 							mob_key := rand.Int()
 							switch mob_key % 3 {
 							case 0:
-								msg = &IncommingMessage{Command: CommandAddMob, CreateMobType: "mob1"}
+								msg = new(IncommingMessage)
+								msg.Command = CommandAddMob
+								msg.CreateMobType = "mob1"
 							case 1:
-								msg = &IncommingMessage{Command: CommandAddMob, CreateMobType: "mob2"}
+								msg = new(IncommingMessage)
+								msg.Command = CommandAddMob
+								msg.CreateMobType = "mob2"
 							case 2:
-								msg = &IncommingMessage{Command: CommandAddMob, CreateMobType: "mob3"}
+								msg = new(IncommingMessage)
+								msg.Command = CommandAddMob
+								msg.CreateMobType = "mob3"
 							}
+						default:
+							fmt.Println("Gennadiy Sleep ")
+							p.Listenflag <- true
+							return
 						}
 
 						p.Message <- msg
 						p.Listenflag <- true
+						return
 					})
 				}
 			}

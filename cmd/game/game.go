@@ -105,6 +105,7 @@ func startGame(w http.ResponseWriter, r *http.Request) {
 	if q.Get("single") == "true"{
 		SingleFlag = true
 	}
+	fmt.Println(SingleFlag)
 	player := game.NewPlayer(user.Nick, conn,SingleFlag)
 
 	gameService.Connection <- player

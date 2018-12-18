@@ -111,6 +111,7 @@ Loop:
 				p2 := GetBot()
 				r.InitPlayer(p2)
 				r.Players[p2.State.Nickname] = p2
+				p2.Room = r
 			}
 			if len(r.Players) == r.MaxPlayers {
 				r.Status = StatusGame
