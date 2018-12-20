@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"SimpleGame/2018_2_Simple_Name/internal/db/postgres"
 	"SimpleGame/internal/dataParsing"
 	"SimpleGame/internal/db/postgres"
 	"SimpleGame/internal/session"
@@ -114,7 +115,22 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 			return
 		}
 	} else if r.Method == http.MethodPost {
-		if err := UploadFileReq(sess.Email, r); err != nil {
+		existUserData, err := db.GetUser(sess.Email)
+
+		if existUserData == nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if err != nil {
+			sugar.Errorw("Failed get user",
+				"error", err,
+				"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if err := UploadFileReq(existUserData.Nick, r); err != nil {
 			sugar.Errorw("Failed put file",
 				"error", err,
 				"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
