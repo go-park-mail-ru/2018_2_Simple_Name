@@ -1,6 +1,7 @@
 package game
 
 import (
+	"SimpleGame/internal/db/postgres"
 	"fmt"
 	"time"
 
@@ -172,6 +173,9 @@ Loop:
 
 			if gameover {
 				r.Status = StatusGameOver
+				if !r.SingleFlag {
+					r.UpdateScore()
+				}
 				fmt.Println("Room " + r.ID + ": Stop ticker")
 				r.Ticker.Stop()
 				go r.Stop()
@@ -211,6 +215,18 @@ func (r *Room) Stop() {
 	r.FreeRoom <- true
 
 	fmt.Println("Room " + r.ID + ": Room Stoped. Your rival ran away!")
+}
+
+func (r *Room) UpdateScore() {
+	for _, p := range r.Players {
+		rival := r.GetRival(p)
+		if p.State.HP > rival.State.HP {
+			db.UpdateScore(p.State.Nickname, 10)
+		} else {
+			db.UpdateScore(rival.State.Nickname, 10)
+		}
+		break
+	}
 }
 
 func (r *Room) ProgressState() bool {
