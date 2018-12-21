@@ -1,13 +1,6 @@
 package main
 
 import (
-	//"SimpleGame/2018_2_Simple_Name/internal/db/postgres"
-	//"SimpleGame/2018_2_Simple_Name/internal/auth"
-	//"SimpleGame/2018_2_Simple_Name/internal/db/postgres"
-	//leaders "SimpleGame/2018_2_Simple_Name/internal/leaderboard"
-	//middle "SimpleGame/2018_2_Simple_Name/internal/middleware"
-	//"SimpleGame/2018_2_Simple_Name/internal/profile"
-	//"SimpleGame/2018_2_Simple_Name/internal/session"
 	"SimpleGame/internal/auth"
 	"SimpleGame/internal/db/postgres"
 	leaders "SimpleGame/internal/leaderboard"
@@ -74,7 +67,6 @@ func main() {
 	siteMux.HandleFunc("/api/leaders", middle.CORSsettings(leaders.LeadersHandler))
 	siteMux.HandleFunc("/api/islogged", middle.CORSsettings(auth.Islogged))
 	siteMux.HandleFunc("/api/logout", middle.CORSsettings(auth.LogOut))
-	//siteMux.HandleFunc("/startgame", startGame)
 	siteMux.HandleFunc("/api/leaderscount", middle.CORSsettings(leaders.LeadersCount))
 	siteMux.HandleFunc("/api/getAvatar", middle.CORSsettings(profile.GetAvatar))
 	siteMux.Handle("/api/metrics", promhttp.Handler())

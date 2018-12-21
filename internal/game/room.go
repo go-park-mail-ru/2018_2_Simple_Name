@@ -60,9 +60,9 @@ func NewRoom(SingleFlag bool) *Room {
 		FreeManager:       make(chan bool),
 		FreeRoom:          make(chan bool),
 		StopRoom:          make(chan bool),
-		OwnTargetParams:   Target{Pos: Position{X: 75, Y: 300}, Area: Area{Height: 150, Width: 150}},
-		RivalTargetParams: Target{Pos: Position{X: 1125, Y: 300}, Area: Area{Height: 150, Width: 150}},
-		AreaParams:        Area{Height: 600, Width: 1200},
+		OwnTargetParams:   Target{Pos: Position{X: 75, Y: 250}, Area: Area{Height: 150, Width: 150}},
+		RivalTargetParams: Target{Pos: Position{X: 1125, Y: 250}, Area: Area{Height: 150, Width: 150}},
+		AreaParams:        Area{Height: 500, Width: 1200},
 		SingleFlag:        SingleFlag,
 	}
 }

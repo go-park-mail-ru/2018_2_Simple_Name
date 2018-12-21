@@ -86,43 +86,34 @@ Loop:
 						p.Listenflag <- true
 					}()
 				} else {
-					p.T = time.AfterFunc(2*time.Second, func() {
+					p.T = time.AfterFunc(500*time.Millisecond, func() {
 						key := rand.Int()
 						fmt.Println("Random key", key%3)
 						msg := &IncommingMessage{}
 						switch key % 3 {
-						case 0:
+						case 2:
 							fmt.Println("Gennadiy killing! ")
-							pos_key := rand.Int()
-							var pos Position
-							switch pos_key % 3 {
-							case 0:
-								fmt.Println("Your mob ")
-								rival := p.Room.GetRival(p)
+
+							rival := p.Room.GetRival(p)
+							if rival != nil {
 								mobs := rival.State.Mobs
 								if len(mobs) != 0 {
-									for _, mob := range mobs {
-										pos = mob.Pos
-										break
+									max_x := 0.0
+									var key_max string
+									for id, mob := range mobs {
+										if mob.Pos.X > max_x {
+											max_x = mob.Pos.X
+											key_max = id
+										}
 									}
 									msg = new(IncommingMessage)
 									msg.Command = CommandKillMob
-									msg.ClickPos = pos
+									msg.ClickPos = mobs[key_max].Pos
 								} else {
 									fmt.Println("No rival mob ")
 									p.Listenflag <- true
 									return
 								}
-							case 2:
-								fmt.Println("Empty area")
-								pos = Position{X: float64(rand.Intn(int(p.Room.AreaParams.Width))), Y: float64(rand.Intn(int(p.Room.AreaParams.Height)))}
-								msg = new(IncommingMessage)
-								msg.Command = CommandKillMob
-								msg.ClickPos = pos
-							default:
-								fmt.Println("Gennadiy do not want to kill ")
-								p.Listenflag <- true
-								return
 							}
 						case 1:
 							fmt.Println("Gennadiy create mob")

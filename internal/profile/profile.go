@@ -1,9 +1,8 @@
 package profile
 
 import (
-	"SimpleGame/2018_2_Simple_Name/internal/db/postgres"
-	"SimpleGame/internal/dataParsing"
 	"SimpleGame/internal/db/postgres"
+	"SimpleGame/internal/dataParsing"
 	"SimpleGame/internal/session"
 
 	"fmt"
