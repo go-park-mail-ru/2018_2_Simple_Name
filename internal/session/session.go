@@ -60,6 +60,9 @@ func (*SessionObject) FindSession(r *http.Request) (*db.UserSession, error) {
 			if err != nil {
 				return nil, err
 			}
+			if sessValue.Email == ""{
+				return nil, nil
+			}
 
 			sess := new(db.UserSession)
 

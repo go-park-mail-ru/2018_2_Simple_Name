@@ -97,8 +97,8 @@ func CheckMobType(Mobtype string) bool {
 }
 
 func (mob *Mob) CheckKillPos(clickpos Position) bool {
-	xcheck := clickpos.X <= mob.Pos.X+mob.Area.Width/2 && clickpos.X >= mob.Pos.X-mob.Area.Width/2
-	ycheck := clickpos.Y <= mob.Pos.Y+mob.Area.Height/2 && clickpos.Y >= mob.Pos.Y-mob.Area.Height/2
+	xcheck := clickpos.X <= mob.Pos.X+mob.Area.Width && clickpos.X >= mob.Pos.X-mob.Area.Width
+	ycheck := clickpos.Y <= mob.Pos.Y+mob.Area.Height && clickpos.Y >= mob.Pos.Y-mob.Area.Height
 	if xcheck && ycheck {
 		return true
 	}
