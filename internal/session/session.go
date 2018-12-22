@@ -1,7 +1,6 @@
 package session
 
 import (
-	"SimpleGame/2018_2_Simple_Name/internal/db/redis"
 	"sync"
 
 	//"SimpleGame/2018_2_Simple_Name/internal/db/redis"
@@ -42,7 +41,9 @@ type SessionObject struct {
 	Mu *sync.Mutex
 }
 
-func (*SessionObject) FindSession(r *http.Request) (*db.UserSession, error) {
+var SessionObj SessionObject
+
+func (s SessionObject) FindSession(r *http.Request) (*db.UserSession, error) {
 	val := r.Cookies()
 
 	for i := 0; i < len(val); i++ {
@@ -55,7 +56,9 @@ func (*SessionObject) FindSession(r *http.Request) (*db.UserSession, error) {
 
 			sessKey.ID = val[i].Value
 			//fmt.Println(sessKey)
+			s.Mu.Lock()
 			sessValue, err := sessManager.Get(ctx, sessKey)
+			s.Mu.Unlock()
 			fmt.Println(sessValue)
 			if err != nil {
 				return nil, err
@@ -81,8 +84,8 @@ func (*SessionObject) FindSession(r *http.Request) (*db.UserSession, error) {
 	return nil, nil
 }
 
-func (*SessionObject) RmCookie(r *http.Request, w *http.ResponseWriter) (error) {
-	UserSession, err := FindSession(r)
+func (s SessionObject) RmCookie(r *http.Request, w *http.ResponseWriter) (error) {
+	UserSession, err := s.FindSession(r)
 
 	if err != nil {
 		fmt.Println(err.Error())
@@ -103,9 +106,9 @@ func (*SessionObject) RmCookie(r *http.Request, w *http.ResponseWriter) (error) 
 	uSess.ID = sess.Value
 
 	http.SetCookie(*w, sess)
-
+	s.Mu.Lock()
 	_, err = sessManager.Delete(ctx, uSess)
-
+	s.Mu.Unlock()
 	if err != nil {
 		return err
 	}
@@ -113,7 +116,7 @@ func (*SessionObject) RmCookie(r *http.Request, w *http.ResponseWriter) (error) 
 	return nil
 }
 
-func (*SessionObject) SetCookie(user *models.User, w *http.ResponseWriter) (error) {
+func (s SessionObject) SetCookie(user *models.User, w *http.ResponseWriter) (error) {
 	uSess := new(db.UserSession)
 	sess := new(http.Cookie)
 	sess.Name = "session_id"
@@ -124,8 +127,10 @@ func (*SessionObject) SetCookie(user *models.User, w *http.ResponseWriter) (erro
 	uSess.Email = user.Email
 
 	http.SetCookie(*w, sess)
+	s.Mu.Lock()
 
 	_, err := sessManager.Create(ctx, uSess)
+	s.Mu.Unlock()
 
 	if err != nil {
 		return err

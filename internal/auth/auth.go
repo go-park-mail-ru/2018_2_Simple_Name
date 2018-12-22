@@ -64,7 +64,7 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			//err = session.Create(redis, user, &w)
-			err = session.SetCookie(user, &w)
+			err = session.SessionObj.SetCookie(user, &w)
 
 			if err != nil {
 				sugar.Errorw("Failed create SESSION",
@@ -140,7 +140,7 @@ func SigninHandler(w http.ResponseWriter, r *http.Request) {
 	if existUser.Password == user.Password {
 
 		//session.Create(redis, user, &w)
-		err := session.SetCookie(user, &w)
+		err := session.SessionObj.SetCookie(user, &w)
 
 		if err != nil {
 			sugar.Errorw("Failed create SESSION",
@@ -163,7 +163,7 @@ func SigninHandler(w http.ResponseWriter, r *http.Request) {
 
 func LogOut(w http.ResponseWriter, r *http.Request) {
 	//sess, err := findSession(r)
-	err := session.RmCookie(r, &w)
+	err := session.SessionObj.RmCookie(r, &w)
 
 	if err != nil {
 		sugar.Errorw("Failed find SESSION",
@@ -194,7 +194,7 @@ func LogOut(w http.ResponseWriter, r *http.Request) {
 
 func Islogged(w http.ResponseWriter, r *http.Request) {
 
-	sess, err := session.FindSession(r)
+	sess, err := session.SessionObj.FindSession(r)
 
 	if err != nil {
 		sugar.Errorw("Failed find SESSION",

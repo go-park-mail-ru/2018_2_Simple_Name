@@ -52,7 +52,7 @@ func main() {
 
 func startGame(w http.ResponseWriter, r *http.Request) {
 	//sugar.Info("Startgame signal from user")
-	sess, err := session.FindSession(r)
+	sess, err := session.SessionObj.FindSession(r)
 	if err != nil {
 		fmt.Println("Failed get session", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)

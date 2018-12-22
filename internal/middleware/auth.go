@@ -8,7 +8,7 @@ import (
 
 func IsLoggedIn(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		sess, err := session.FindSession(r)
+		sess, err := session.SessionObj.FindSession(r)
 
 		if err != nil {
 			//fmt.Println(err.Error())

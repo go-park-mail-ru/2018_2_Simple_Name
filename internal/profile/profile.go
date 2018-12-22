@@ -22,7 +22,9 @@ var sugar = logger.Sugar()
 
 func ProfileHandler(w http.ResponseWriter, r *http.Request) { // Валидировать данные
 
-	sess, err := session.FindSession(r)
+	// sess, err := session.SessionObject.FindSession(r)
+	sess, err := session.SessionObj.FindSession(r)
+
 
 	if err != nil {
 		sugar.Errorw("Failed get SESSION",
@@ -179,7 +181,7 @@ func UploadFileReq(fileName string, r *http.Request) error {
 }
 
 func GetAvatar(w http.ResponseWriter, r *http.Request) {
-	sess, err := session.FindSession(r)
+	sess, err := session.SessionObj.FindSession(r)
 
 	if err != nil {
 		sugar.Errorw("Failed get SESSION",
