@@ -41,7 +41,8 @@ type SessionObject struct {
 	Mu *sync.Mutex
 }
 
-var SessionObj = new(SessionObject)
+var SessionObj = SessionObject{Mu: &sync.Mutex{}}
+// SessionObj.Mu := &sync.Mutex{}
 
 func (s *SessionObject) FindSession(r *http.Request) (*db.UserSession, error) {
 	val := r.Cookies()
