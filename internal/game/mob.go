@@ -43,8 +43,8 @@ func CreateMob(Mobtype string, Pos Position) *Mob {
 				X: Pos.X,
 				Y: Pos.Y,
 			},
-			KillPoints: 5,
-			Price:      30,
+			KillPoints: 10,
+			Price:      10,
 			Status:     "run",
 		}
 	case "mob2":
