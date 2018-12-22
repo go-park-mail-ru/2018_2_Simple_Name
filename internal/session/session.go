@@ -1,6 +1,9 @@
 package session
 
 import (
+	"SimpleGame/2018_2_Simple_Name/internal/db/redis"
+	"sync"
+
 	//"SimpleGame/2018_2_Simple_Name/internal/db/redis"
 	//"SimpleGame/2018_2_Simple_Name/internal/generator"
 	//"SimpleGame/2018_2_Simple_Name/internal/models"
@@ -35,7 +38,11 @@ func OpenConn() (*grpc.ClientConn, error) {
 	return grpcConn, nil
 }
 
-func FindSession(r *http.Request) (*db.UserSession, error) {
+type SessionObject struct {
+	Mu *sync.Mutex
+}
+
+func (*SessionObject) FindSession(r *http.Request) (*db.UserSession, error) {
 	val := r.Cookies()
 
 	for i := 0; i < len(val); i++ {
@@ -71,7 +78,7 @@ func FindSession(r *http.Request) (*db.UserSession, error) {
 	return nil, nil
 }
 
-func RmCookie(r *http.Request, w *http.ResponseWriter) (error) {
+func (*SessionObject) RmCookie(r *http.Request, w *http.ResponseWriter) (error) {
 	UserSession, err := FindSession(r)
 
 	if err != nil {
@@ -103,7 +110,7 @@ func RmCookie(r *http.Request, w *http.ResponseWriter) (error) {
 	return nil
 }
 
-func SetCookie(user *models.User, w *http.ResponseWriter) (error) {
+func (*SessionObject) SetCookie(user *models.User, w *http.ResponseWriter) (error) {
 	uSess := new(db.UserSession)
 	sess := new(http.Cookie)
 	sess.Name = "session_id"
