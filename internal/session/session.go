@@ -41,9 +41,9 @@ type SessionObject struct {
 	Mu *sync.Mutex
 }
 
-var SessionObj SessionObject
+var SessionObj = new(SessionObject)
 
-func (s SessionObject) FindSession(r *http.Request) (*db.UserSession, error) {
+func (s *SessionObject) FindSession(r *http.Request) (*db.UserSession, error) {
 	val := r.Cookies()
 
 	for i := 0; i < len(val); i++ {
@@ -84,7 +84,7 @@ func (s SessionObject) FindSession(r *http.Request) (*db.UserSession, error) {
 	return nil, nil
 }
 
-func (s SessionObject) RmCookie(r *http.Request, w *http.ResponseWriter) (error) {
+func (s *SessionObject) RmCookie(r *http.Request, w *http.ResponseWriter) (error) {
 	UserSession, err := s.FindSession(r)
 
 	if err != nil {
@@ -116,7 +116,7 @@ func (s SessionObject) RmCookie(r *http.Request, w *http.ResponseWriter) (error)
 	return nil
 }
 
-func (s SessionObject) SetCookie(user *models.User, w *http.ResponseWriter) (error) {
+func (s *SessionObject) SetCookie(user *models.User, w *http.ResponseWriter) (error) {
 	uSess := new(db.UserSession)
 	sess := new(http.Cookie)
 	sess.Name = "session_id"
