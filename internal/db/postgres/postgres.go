@@ -4,8 +4,7 @@ import (
 	//"SimpleGame/2018_2_Simple_Name/internal/models"
 	"SimpleGame/internal/models"
 	"database/sql"
-	"fmt"
-	// "io/ioutil"
+	"fmt" // "io/ioutil"
 
 	_ "github.com/lib/pq"
 )
@@ -88,6 +87,17 @@ func (s *PostgresUserService) UpdateUser(existData *models.User, newData *models
 	}
 
 	return user, nil
+}
+
+func (s *PostgresUserService) UpdateScore(nick string, score int) error {
+	query := "UPDATE users SET score = score + $1 WHERE nick=$2 "
+
+	_, err := s.db.Exec(query, score, nick)
+
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *PostgresUserService) GetUsersByScore(limit string, offset string) ([]*models.User, error) {

@@ -77,6 +77,10 @@ func UpdateUser(existData *models.User, newData *models.User) (*models.User, err
 
 	return user, nil
 }
+func UpdateScore(nick string, score int) error {
+	err := postgres.UpdateScore(nick, score)
+	return err
+}
 
 func GetUsersByScore(limit string, offset string) ([]*models.User, error) {
 	var users = make([]*models.User, 0)

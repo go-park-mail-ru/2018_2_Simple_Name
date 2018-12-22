@@ -27,6 +27,7 @@ type UserService interface {
 	GetUser(email string) (*User, error)
 	CreateUser(u *User) error
 	UpdateUser(existData *User, newData *User) (*User, error)
+	UpdateScore(nick string, score int) error
 	DeleteUser(email string) error
 	GetUsersByScore(limit string, offset string) ([]*User, error)
 	GetLeadersCount(limit string) (int, error)

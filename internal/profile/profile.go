@@ -1,11 +1,8 @@
 package profile
 
 import (
-	//"SimpleGame/2018_2_Simple_Name/internal/dataParsing"
-	//"SimpleGame/2018_2_Simple_Name/internal/db/postgres"
-	//"SimpleGame/2018_2_Simple_Name/internal/session"
-	"SimpleGame/internal/dataParsing"
 	"SimpleGame/internal/db/postgres"
+	"SimpleGame/internal/dataParsing"
 	"SimpleGame/internal/session"
 
 	"fmt"
@@ -117,7 +114,22 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) { // Валидир�
 			return
 		}
 	} else if r.Method == http.MethodPost {
-		if err := UploadFileReq(sess.Email, r); err != nil {
+		existUserData, err := db.GetUser(sess.Email)
+
+		if existUserData == nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if err != nil {
+			sugar.Errorw("Failed get user",
+				"error", err,
+				"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if err := UploadFileReq(existUserData.Nick, r); err != nil {
 			sugar.Errorw("Failed put file",
 				"error", err,
 				"time", strconv.Itoa(time.Now().Hour())+":"+strconv.Itoa(time.Now().Minute()))
@@ -141,17 +153,13 @@ func UploadFileReq(fileName string, r *http.Request) error {
 		return err
 	}
 
-	tt, err := ioutil.ReadAll(r.Body)
-	defer r.Body.Close()
+	_, err := ioutil.ReadAll(r.Body)
 
-	fmt.Println()
-	fmt.Println(tt)
-	fmt.Println()
+	defer r.Body.Close()
 
 	file, _, err := r.FormFile("new_avatar")
 
 	if err != nil {
-		fmt.Println("1")
 		return err
 	}
 	defer file.Close()
@@ -159,7 +167,7 @@ func UploadFileReq(fileName string, r *http.Request) error {
 	// fmt.Println(fileName)
 	// fmt.Println(filepath.Join(("/media")))
 
-	dst, err := os.Create(filepath.Join("internal/media", fileName))
+	dst, err := os.Create(filepath.Join("internal/media", fileName + ".png"))
 
 	if err != nil {
 		fmt.Println("Error")

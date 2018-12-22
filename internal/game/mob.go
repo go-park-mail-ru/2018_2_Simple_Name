@@ -35,15 +35,15 @@ func CreateMob(Mobtype string, Pos Position) *Mob {
 		mob = Mob{
 			ID:    id,
 			Type:  "mob1",
-			HP:    5,
-			Speed: 2,
-			Force: 10,
+			HP:    2,
+			Speed: 3,
+			Force: 3,
 			Area:  Area{Width: 50, Height: 50},
 			Pos: Position{
 				X: Pos.X,
 				Y: Pos.Y,
 			},
-			KillPoints: 20,
+			KillPoints: 5,
 			Price:      30,
 			Status:     "run",
 		}
@@ -53,15 +53,15 @@ func CreateMob(Mobtype string, Pos Position) *Mob {
 			ID:    id,
 			Type:  "mob2",
 			HP:    3,
-			Speed: 3,
-			Force: 5,
+			Speed: 2,
+			Force: 2,
 			Area:  Area{Width: 50, Height: 50},
 			Pos: Position{
 				X: Pos.X,
 				Y: Pos.Y,
 			},
-			KillPoints: 10,
-			Price:      10,
+			KillPoints: 20,
+			Price:      20,
 			Status:     "run",
 		}
 	case "mob3":
@@ -71,14 +71,14 @@ func CreateMob(Mobtype string, Pos Position) *Mob {
 			Type:  "mob3",
 			HP:    10,
 			Speed: 1,
-			Force: 20,
+			Force: 1,
 			Area:  Area{Width: 50, Height: 50},
 			Pos: Position{
 				X: Pos.X,
 				Y: Pos.Y,
 			},
-			KillPoints: 50,
-			Price:      50,
+			KillPoints: 30,
+			Price:      40,
 			Status:     "run",
 		}
 	}
