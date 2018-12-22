@@ -50,7 +50,7 @@ func FindSession(r *http.Request) (*db.UserSession, error) {
 			//fmt.Println(sessKey)
 			sessValue, err := sessManager.Get(ctx, sessKey)
 			fmt.Println(sessValue)
-			if err != nil {
+			if err != nil || sessValue.Email == "" {
 				return nil, err
 			}
 
