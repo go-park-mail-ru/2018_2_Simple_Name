@@ -6,17 +6,17 @@ import (
 	//"SimpleGame/2018_2_Simple_Name/internal/db/redis"
 	//"SimpleGame/2018_2_Simple_Name/internal/generator"
 	//"SimpleGame/2018_2_Simple_Name/internal/models"
-	"SimpleGame/internal/db/redis"
+	db "SimpleGame/internal/db/redis"
 	"SimpleGame/internal/generator"
 	"SimpleGame/internal/models"
 
 	"context"
 	"fmt"
-	"google.golang.org/grpc"
 	"net/http"
 	"time"
-)
 
+	"google.golang.org/grpc"
+)
 
 var sessManager db.AuthCheckerClient
 var ctx context.Context
@@ -41,8 +41,15 @@ type SessionObject struct {
 	Mu *sync.Mutex
 }
 
-var SessionObj = SessionObject{Mu: &sync.Mutex{}}
-// SessionObj.Mu := &sync.Mutex{}
+var SessionObj = NewSessObj()
+
+func NewSessObj() *SessionObject {
+	mu := &sync.Mutex{}
+	SessionObj := SessionObject{
+		Mu: mu,
+	}
+	return &SessionObj
+}
 
 func (s *SessionObject) FindSession(r *http.Request) (*db.UserSession, error) {
 	val := r.Cookies()
@@ -54,7 +61,6 @@ func (s *SessionObject) FindSession(r *http.Request) (*db.UserSession, error) {
 
 			sessValue := new(db.SessionValue)
 
-
 			sessKey.ID = val[i].Value
 			//fmt.Println(sessKey)
 			s.Mu.Lock()
@@ -64,7 +70,7 @@ func (s *SessionObject) FindSession(r *http.Request) (*db.UserSession, error) {
 			if err != nil {
 				return nil, err
 			}
-			if sessValue.Email == ""{
+			if sessValue.Email == "" {
 				return nil, nil
 			}
 
@@ -74,7 +80,7 @@ func (s *SessionObject) FindSession(r *http.Request) (*db.UserSession, error) {
 			sess.Email = sessValue.Email
 
 			//sess, err := session.Get(redis, val[i].Value)
-			
+
 			return sess, nil
 
 		} else {
@@ -85,7 +91,7 @@ func (s *SessionObject) FindSession(r *http.Request) (*db.UserSession, error) {
 	return nil, nil
 }
 
-func (s *SessionObject) RmCookie(r *http.Request, w *http.ResponseWriter) (error) {
+func (s *SessionObject) RmCookie(r *http.Request, w *http.ResponseWriter) error {
 	UserSession, err := s.FindSession(r)
 
 	if err != nil {
@@ -117,12 +123,12 @@ func (s *SessionObject) RmCookie(r *http.Request, w *http.ResponseWriter) (error
 	return nil
 }
 
-func (s *SessionObject) SetCookie(user *models.User, w *http.ResponseWriter) (error) {
+func (s *SessionObject) SetCookie(user *models.User, w *http.ResponseWriter) error {
 	uSess := new(db.UserSession)
 	sess := new(http.Cookie)
 	sess.Name = "session_id"
 	sess.Value = generator.UidGen()
-	sess.Expires = time.Now().Add(time.Hour*5)
+	sess.Expires = time.Now().Add(time.Hour * 5)
 
 	uSess.ID = sess.Value
 	uSess.Email = user.Email
@@ -139,4 +145,3 @@ func (s *SessionObject) SetCookie(user *models.User, w *http.ResponseWriter) (er
 
 	return nil
 }
-
